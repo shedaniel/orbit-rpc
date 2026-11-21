@@ -15,6 +15,7 @@ class App : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         graph = AppGraph(this)
+        if (BuildConfig.DEBUG) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
     }
 
     /** UI images (avatars, artwork previews) go through the metered client too, cached on disk. */

@@ -46,6 +46,8 @@ fun DiscordLoginWebView(modifier: Modifier, onToken: (String) -> Unit, onLoading
         factory = { ctx ->
             clearWebData()
             WebView(ctx).apply {
+                // WRAP_CONTENT (AndroidView's default) makes CSS vh resolve to 0 and Discord's layout collapse.
+                layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
                 clearCache(true)
                 clearHistory()
                 settings.javaScriptEnabled = true
@@ -95,7 +97,20 @@ fun DiscordLoginWebView(modifier: Modifier, onToken: (String) -> Unit, onLoading
                         }
                     }
                 }
-                loadUrl(LOGIN_URL)
+                // Load only once laid out with a real size: Chromium fixes CSS viewport units (vh) at
+                // first load, and a 0-height WebView makes Discord's full-height layout collapse.
+                fun loadWhenSized(v: android.view.View) {
+                    if (v.width > 0 && v.height > 0) loadUrl(LOGIN_URL)
+                    else v.addOnLayoutChangeListener(object : android.view.View.OnLayoutChangeListener {
+                        override fun onLayoutChange(view: android.view.View, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
+                            if (r - l > 0 && b - t > 0) {
+                                view.removeOnLayoutChangeListener(this)
+                                view.post { loadUrl(LOGIN_URL) }
+                            }
+                        }
+                    })
+                }
+                loadWhenSized(this)
             }
         },
         onRelease = { wv ->
