@@ -91,6 +91,7 @@ class PresenceEngine(
     /** The disconnect launched by the last [stop]; a new [start] must not overtake it. */
     private var stopping: Job? = null
     private val pausedAt = mutableMapOf<String, Long>()
+    private val alwaysSince = mutableMapOf<String, Long>()
     /** Bumped when a paused-grace window expires, so the plan is recomputed without any input change. */
     private val recheck = MutableStateFlow(0)
     /** When the presence last became empty (for the idle disconnect); null while something is shown. */
@@ -189,9 +190,13 @@ class PresenceEngine(
         }
         val (signals, recheckAt) = filterSignals(i.signals, s, now)
         val max = if (s.discord.multipleActivities) 4 else 1
-        val activities = RulesEngine.evaluate(i.rules.rules, signals, max).mapNotNull { m ->
+        val matches = RulesEngine.evaluate(i.rules.rules, signals, max)
+        // Fallback ("always") rules have no signal; keep their start time stable while they stay shown.
+        alwaysSince.keys.retainAll(matches.filter { it.signal == null }.map { it.rule.id }.toSet())
+        val activities = matches.mapNotNull { m ->
             val custom = m.signal?.packageName?.let { s.apps[it]?.customName }
-            RulesEngine.render(m.rule, m.signal, custom, now)
+            val t = if (m.signal == null) alwaysSince.getOrPut(m.rule.id) { now } else now
+            RulesEngine.render(m.rule, m.signal, custom, t)
         }
         return Plan(i.token, pause, profile, i.conditions.transport, signals, activities, s, recheckAt)
     }
