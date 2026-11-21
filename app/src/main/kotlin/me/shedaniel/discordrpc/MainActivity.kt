@@ -4,12 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Text
+import me.shedaniel.discordrpc.service.PresenceService
+import me.shedaniel.discordrpc.ui.OrbitApp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent { Text("Orbit") }
+        if (graph.settings.value.onboarded) PresenceService.sync(this)
+        setContent { OrbitApp() }
     }
 }

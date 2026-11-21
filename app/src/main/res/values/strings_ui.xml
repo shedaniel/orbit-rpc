@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tabs -->
+    <string name="tab_now">Now</string>
+    <string name="tab_rules">Rules</string>
+    <string name="tab_apps">Apps</string>
+    <string name="tab_data">Data</string>
+
+    <!-- Home -->
+    <string name="home_sharing">Sharing</string>
+    <string name="home_off">Off</string>
+    <string name="home_also_detected">Also detected</string>
+    <string name="home_sources">Sources</string>
+    <string name="home_empty">Play something or open a game</string>
+    <string name="source_media">Media</string>
+    <string name="source_games">Games</string>
+    <string name="source_spotify">Spotify Connect</string>
+    <string name="status_off">Off</string>
+    <string name="status_live">Live</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_standby">Standing by</string>
+    <string name="status_reconnecting">Reconnecting</string>
+    <string name="status_signed_out">Signed out</string>
+    <string name="signal_playing">Playing</string>
+    <string name="signal_paused">Paused</string>
+    <string name="signal_game">Game</string>
+    <string name="signal_open">Open</string>
+
+    <!-- Presence card -->
+    <string name="card_elapsed">%1$s elapsed</string>
+</resources>
