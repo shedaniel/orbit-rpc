@@ -51,6 +51,7 @@ class PresenceService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         if (intent?.action == ACTION_STOP) {
             graph.settingsStore.update { it.copy(enabled = false) }
+            graph.settingsStore.flush()
             stopSelf()
         }
         return START_STICKY

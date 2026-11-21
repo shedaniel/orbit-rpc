@@ -50,6 +50,10 @@ class JsonStore<T>(
 
     fun update(transform: (T) -> T) = _state.update(transform)
 
+    /** Writes the current value now (for changes made right before the process may die). */
+    @Synchronized
+    fun flush() = write(_state.value)
+
     private fun read(): T? = try {
         if (!atomic.baseFile.exists()) null
         else AppJson.decodeFromString(serializer, atomic.readFully().decodeToString())
@@ -58,6 +62,7 @@ class JsonStore<T>(
         null
     }
 
+    @Synchronized
     private fun write(value: T) {
         val out = atomic.startWrite()
         try {
