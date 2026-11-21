@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -41,7 +41,11 @@ class JsonStore<T>(
     val value: T get() = _state.value
 
     init {
-        _state.drop(1).debounce(writeDebounceMs).onEach { write(it) }.launchIn(CoroutineScope(scope.coroutineContext + Dispatchers.IO))
+        // Skip only the value we just read. (`drop(1)` would also swallow an update made before the collector
+        // subscribes, e.g. a tile toggle in a cold process, and that change would never be written.)
+        val initial = _state.value
+        _state.dropWhile { it === initial }.debounce(writeDebounceMs).onEach { write(it) }
+            .launchIn(CoroutineScope(scope.coroutineContext + Dispatchers.IO))
     }
 
     fun update(transform: (T) -> T) = _state.update(transform)
