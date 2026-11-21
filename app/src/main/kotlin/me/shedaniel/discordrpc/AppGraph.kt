@@ -49,7 +49,7 @@ class AppGraph(val context: Context) {
     val spotifyAuth = SpotifyAuth(context, http, scope)
 
     private val profileHolder = MutableStateFlow<NetworkProfile?>(null)
-    val spotifySource = SpotifyConnectSource(context, http, settingsStore.state, profileHolder, mediaSource.signals, scope)
+    val spotifySource = SpotifyConnectSource(context, http, spotifyAuth, settingsStore.state, profileHolder, mediaSource.signals, scope)
 
     val engine = PresenceEngine(
         scope = scope,
