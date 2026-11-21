@@ -14,7 +14,8 @@
     <string name="home_empty">Play something or open a game</string>
     <string name="source_media">Media</string>
     <string name="source_games">Games</string>
-    <string name="source_spotify">Spotify Connect</string>
+    <string name="source_spotify">Spotify</string>
+    <string name="home_sign_in">Sign in with Discord</string>
     <string name="status_off">Off</string>
     <string name="status_live">Live</string>
     <string name="status_connected">Connected</string>
@@ -29,4 +30,89 @@
 
     <!-- Presence card -->
     <string name="card_elapsed">%1$s elapsed</string>
+
+    <!-- Rules -->
+    <string name="rules_title">Rules</string>
+    <string name="rules_reorder">Reorder</string>
+    <string name="rules_new">New rule</string>
+    <string name="rules_new_media">Media</string>
+    <string name="rules_new_app">App or game</string>
+    <string name="rules_new_always">Custom status</string>
+    <string name="kind_music">Music</string>
+    <string name="kind_video">Video</string>
+    <string name="kind_podcast">Podcasts</string>
+    <string name="kind_audiobook">Audiobooks</string>
+    <string name="kind_unknown">Other audio</string>
+    <string name="trigger_any_media">Any media</string>
+    <string name="trigger_any_app">Any app</string>
+    <string name="trigger_games">Games</string>
+    <string name="trigger_chosen_apps">Apps marked in Apps</string>
+    <string name="trigger_always">When nothing else shows</string>
+    <plurals name="trigger_n_apps">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_remove">Remove</string>
+
+    <!-- Activity types -->
+    <string name="type_playing">Playing</string>
+    <string name="type_listening">Listening</string>
+    <string name="type_watching">Watching</string>
+    <string name="type_streaming">Streaming</string>
+    <string name="type_competing">Competing</string>
+
+    <!-- Rule editor -->
+    <string name="editor_default_name_media">Media rule</string>
+    <string name="editor_default_name_app">App rule</string>
+    <string name="editor_default_name_always">Custom status</string>
+    <string name="editor_preview_empty">Nothing to show</string>
+    <string name="editor_section_rule">Rule</string>
+    <string name="editor_rule_name">Name</string>
+    <string name="editor_section_when">When</string>
+    <string name="editor_include_paused">Also while paused</string>
+    <string name="editor_include_remote">Include Spotify Connect</string>
+    <string name="editor_any_game">Any game</string>
+    <string name="editor_pick_apps">Choose apps</string>
+    <string name="editor_section_show">Show</string>
+    <string name="editor_type_auto">Auto</string>
+    <string name="editor_type_auto_hint">Listening or Watching, by media type</string>
+    <string name="editor_field_name">Name</string>
+    <string name="editor_field_details">Details</string>
+    <string name="editor_field_state">State</string>
+    <string name="editor_section_member_list">Member list shows</string>
+    <string name="editor_section_images">Images</string>
+    <string name="editor_large_image">Large image</string>
+    <string name="editor_small_image">Small image</string>
+    <string name="editor_hover_text">Hover text</string>
+    <string name="editor_image_none">None</string>
+    <string name="editor_image_artwork">Artwork</string>
+    <string name="editor_image_app">App icon</string>
+    <string name="editor_image_url">Link</string>
+    <string name="editor_image_url_hint">Image URL</string>
+    <string name="editor_section_time">Time</string>
+    <string name="editor_time_none">None</string>
+    <string name="editor_time_elapsed">Elapsed</string>
+    <string name="editor_time_progress">Progress</string>
+    <string name="editor_section_buttons">Buttons</string>
+    <string name="editor_button_label">Label</string>
+    <string name="editor_button_url">Link</string>
+    <string name="editor_add_button">Add button</string>
+    <string name="editor_discard_title">Discard changes?</string>
+    <string name="editor_delete_title">Delete this rule?</string>
+    <string name="editor_you">You</string>
+    <string name="ph_title">Title</string>
+    <string name="ph_artist">Artist</string>
+    <string name="ph_album">Album</string>
+    <string name="ph_app">App</string>
+    <string name="ph_device">Device</string>
+
+    <!-- Apps -->
+    <string name="apps_search">Search apps</string>
 </resources>

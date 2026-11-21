@@ -33,9 +33,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Login
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -143,26 +145,37 @@ fun HomeScreen(contentPadding: PaddingValues, onOpenTab: (Tab) -> Unit) {
             previewUrl = preview,
         )
 
-        // Master switch: shape morphs between pill (on) and square (off).
+        // Master switch: shape morphs between pill (on) and square (off). Signed out: sign in instead.
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            ToggleButton(
-                checked = settings.enabled,
-                onCheckedChange = { on ->
-                    haptics.toggle(on)
-                    graph.settingsStore.update { it.copy(enabled = on) }
-                    if (on) PresenceService.start(context) else PresenceService.stop(context)
-                },
-                modifier = Modifier.heightIn(min = ButtonDefaults.MediumContainerHeight),
-                shapes = ToggleButtonDefaults.shapesFor(ButtonDefaults.MediumContainerHeight),
-                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-            ) {
-                Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)))
-                Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
-                AnimatedContent(settings.enabled, label = "power") { on ->
-                    Text(
-                        stringResource(if (on) R.string.home_sharing else R.string.home_off),
-                        style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight),
-                    )
+            val h = ButtonDefaults.MediumContainerHeight
+            if (state.connection is ConnectionState.LoggedOut || (state.connection as? ConnectionState.Paused)?.reason == PauseReason.TOKEN_INVALID) {
+                Button(
+                    onClick = { haptics.press(); nav.push(Route.Login) },
+                    modifier = Modifier.heightIn(min = h),
+                    shapes = ButtonDefaults.shapesFor(h),
+                    contentPadding = ButtonDefaults.contentPaddingFor(h),
+                ) {
+                    Icon(Icons.Rounded.Login, null, Modifier.size(ButtonDefaults.iconSizeFor(h)))
+                    Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(h)))
+                    Text(stringResource(R.string.home_sign_in), style = ButtonDefaults.textStyleFor(h))
+                }
+            } else {
+                ToggleButton(
+                    checked = settings.enabled,
+                    onCheckedChange = { on ->
+                        haptics.toggle(on)
+                        graph.settingsStore.update { it.copy(enabled = on) }
+                        if (on) PresenceService.start(context) else PresenceService.stop(context)
+                    },
+                    modifier = Modifier.heightIn(min = h),
+                    shapes = ToggleButtonDefaults.shapesFor(h),
+                    contentPadding = ButtonDefaults.contentPaddingFor(h),
+                ) {
+                    Icon(Icons.Rounded.PowerSettingsNew, null, Modifier.size(ButtonDefaults.iconSizeFor(h)))
+                    Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(h)))
+                    AnimatedContent(settings.enabled, label = "power") { on ->
+                        Text(stringResource(if (on) R.string.home_sharing else R.string.home_off), style = ButtonDefaults.textStyleFor(h))
+                    }
                 }
             }
         }
