@@ -42,18 +42,15 @@ object RulesEngine {
         val used = mutableSetOf<String>()
         val out = mutableListOf<Match>()
         for (rule in rules) {
-            if (!rule.enabled) continue
+            if (!rule.enabled || rule.trigger is Trigger.Always) continue
             if (out.size >= max) break
-            if (rule.trigger is Trigger.Always) {
-                out += Match(rule, null); continue
-            }
             val s = ranked.firstOrNull { it.id !in used && matches(rule.trigger, it) } ?: continue
             used += s.id
             out += Match(rule, s)
         }
-        // "Always" rules are fallbacks: only keep them if nothing else matched.
-        val real = out.filter { it.signal != null }
-        return if (real.isNotEmpty()) real.take(max) else out.take(max)
+        if (out.isNotEmpty()) return out
+        // "Always" rules are fallbacks: only used when nothing else matched.
+        return rules.filter { it.enabled && it.trigger is Trigger.Always }.take(max).map { Match(it, null) }
     }
 
     fun values(signal: Signal?, appName: String?): Map<String, String?> = buildMap {
