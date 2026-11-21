@@ -62,6 +62,7 @@ import androidx.core.content.ContextCompat
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.shedaniel.discordrpc.R
 import me.shedaniel.discordrpc.graph
 import me.shedaniel.discordrpc.service.PresenceService
@@ -84,7 +85,7 @@ private data class Step(
 )
 
 private val steps = listOf(
-    Step(MaterialShapes.Cookie9Sided, Icons.Rounded.Login, R.string.onb_discord_title, R.string.onb_discord_body, R.string.onb_discord_action, false),
+    Step(MaterialShapes.Cookie9Sided, Icons.Rounded.Login, R.string.onb_discord_title, R.string.onb_discord_body, R.string.onb_discord_action, true),
     Step(MaterialShapes.Sunny, Icons.Rounded.MusicNote, R.string.onb_media_title, R.string.onb_media_body, R.string.onb_grant, true),
     Step(MaterialShapes.Clover4Leaf, Icons.Rounded.SportsEsports, R.string.onb_games_title, R.string.onb_games_body, R.string.onb_grant, true),
     Step(MaterialShapes.Cookie6Sided, Icons.Rounded.NotificationsActive, R.string.onb_notif_title, R.string.onb_notif_body, R.string.onb_allow, true),
@@ -102,7 +103,13 @@ fun OnboardingScreen() {
     var index by rememberSaveable { mutableIntStateOf(0) }
 
     var tick by remember { mutableIntStateOf(0) }
-    LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    LifecycleResumeEffect(Unit) {
+        tick++
+        // System settings can commit a grant a moment after we resume; look again shortly.
+        val job = scope.launch { kotlinx.coroutines.delay(800); tick++ }
+        onPauseOrDispose { job.cancel() }
+    }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
 
     fun done(i: Int): Boolean {
