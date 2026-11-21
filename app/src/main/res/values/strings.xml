@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Orbit</string>
+
+    <!-- Activity verbs (%1$s = activity name) -->
+    <string name="verb_playing">Playing %1$s</string>
+    <string name="verb_listening">Listening to %1$s</string>
+    <string name="verb_watching">Watching %1$s</string>
+    <string name="verb_streaming">Streaming %1$s</string>
+    <string name="verb_competing">Competing in %1$s</string>
+
+    <!-- Notification -->
+    <string name="notif_channel">Presence</string>
+    <string name="notif_idle_title">Nothing shared</string>
+    <string name="notif_paused_title">Paused</string>
+    <string name="notif_error_title">Reconnecting</string>
+    <string name="notif_logged_out">Not signed in</string>
+    <string name="notif_action_stop">Turn off</string>
+    <string name="pause_disabled">Turned off</string>
+    <string name="pause_no_network">No connection</string>
+    <string name="pause_cellular">Off on mobile data</string>
+    <string name="pause_roaming">Off while roaming</string>
+    <string name="pause_data_saver">Data Saver is on</string>
+    <string name="pause_token">Sign in again</string>
+
+    <!-- Quick settings tile -->
+    <string name="tile_on">On</string>
+    <string name="tile_off">Off</string>
+</resources>
