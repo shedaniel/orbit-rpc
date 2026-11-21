@@ -106,6 +106,8 @@ class GatewayClient(
     private var reconnectJob: Job? = null
     private var flushJob: Job? = null
     private var attempts = 0
+    /** When the current session became usable; a session that dies quickly keeps backing off. */
+    private var readyAt: Long? = null
     private val sendTimes = ArrayDeque<Long>()
     private var lastConditions: NetworkConditions? = conditions?.value
     private var otherDispatches = 0
@@ -379,6 +381,8 @@ class GatewayClient(
 
     private fun scheduleReconnect(code: Int?, message: String) {
         reconnectJob?.cancel()
+        readyAt?.let { if (System.currentTimeMillis() - it > STABLE_SESSION_MS) attempts = 0 }
+        readyAt = null
         val d = backoffMs(attempts++)
         val at = System.currentTimeMillis() + d
         _status.value = if (d < 2_000) GatewayStatus.Connecting else GatewayStatus.Failed(code, message, fatal = false, retryAtMs = at)
@@ -420,7 +424,8 @@ class GatewayClient(
                 user = u
                 awaitingReady = false
                 leanInvalidSessions = 0
-                attempts = 0
+                // Backoff resets only once the session has proven stable (see scheduleReconnect).
+                readyAt = System.currentTimeMillis()
                 EventLog.i(TAG, "READY as ${u.username}: ${kb(m.compressed)} on the wire, ${kb(m.inflated)} inflated${if (identifiedLean) ", lean" else ""}")
                 _status.value = GatewayStatus.Ready(u)
                 flush()
@@ -428,7 +433,7 @@ class GatewayClient(
             is Incoming.Resumed -> {
                 m.seq?.let { session?.seq = it }
                 resuming = false
-                attempts = 0
+                readyAt = System.currentTimeMillis()
                 val idle = session?.closedAt?.let { (System.currentTimeMillis() - it) / 1000 }
                 session?.closedAt = null
                 EventLog.i(TAG, "Resumed session" + (idle?.let { " after ${it}s" } ?: "") + if (otherDispatches > 0) ", $otherDispatches events replayed" else "")
@@ -661,6 +666,7 @@ class GatewayClient(
     class UserD(val id: String, val username: String, @SerialName("global_name") val globalName: String? = null, val avatar: String? = null)
 
     companion object {
+        private const val STABLE_SESSION_MS = 60_000L
         private const val TAG = "Gateway"
         const val DEFAULT_GATEWAY = "wss://gateway.discord.gg"
 
