@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared -->
+    <string name="screen_back">Back</string>
+    <string name="screen_cancel">Cancel</string>
+    <string name="screen_save">Save</string>
+    <string name="screen_off">Off</string>
+    <string name="screen_default">Default</string>
+    <string name="unit_seconds">%1$d s</string>
+    <string name="unit_minutes">%1$d min</string>
+    <string name="unit_ms">%1$d ms</string>
+    <string name="unit_seconds_decimal">%1$s s</string>
+
+    <!-- Data -->
+    <string name="data_title">Data</string>
+    <string name="data_today">Today</string>
+    <string name="data_wifi">Wi-Fi</string>
+    <string name="data_mobile">Mobile data</string>
+    <string name="data_mobile_short">Mobile</string>
+    <string name="data_all">All</string>
+    <string name="data_now">Now</string>
+    <string name="data_breakdown">Breakdown</string>
+    <string name="data_nothing">Nothing sent</string>
+    <plurals name="data_requests">
+        <item quantity="one">%1$d request</item>
+        <item quantity="other">%1$d requests</item>
+    </plurals>
+    <string name="data_android_counted">Android counted</string>
+    <string name="data_measured">Measured %1$s</string>
+    <string name="data_unknown">—</string>
+    <string name="data_policy">On this network</string>
+    <string name="data_cat_gateway">Discord connection</string>
+    <string name="data_cat_api">Discord API</string>
+    <string name="data_cat_artwork">Album art lookup</string>
+    <string name="data_cat_upload">Image uploads</string>
+    <string name="data_cat_icons">App icons</string>
+    <string name="data_cat_spotify">Spotify</string>
+    <string name="data_cat_other">Other</string>
+    <string name="data_p_enabled">Share on this network</string>
+    <string name="data_p_artwork">Look up album art</string>
+    <string name="data_p_upload">Upload artwork</string>
+    <string name="data_p_icons">App icons</string>
+    <string name="data_p_spotify">Spotify Connect</string>
+    <string name="data_p_stay">Stay connected when idle</string>
+    <string name="data_p_stay_summary">Faster to resume, uses more data</string>
+    <string name="data_roaming">Pause while roaming</string>
+    <string name="data_saver">Follow Data Saver</string>
+    <string name="data_saver_summary">Presence only</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_signed_out">Not signed in</string>
+    <string name="settings_username">\@%1$s</string>
+    <string name="settings_sign_in">Sign in</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_sign_out_confirm">Sign out of Discord?</string>
+
+    <string name="settings_discord">Discord</string>
+    <string name="settings_status">Status</string>
+    <string name="settings_status_online">Online</string>
+    <string name="settings_status_idle">Idle</string>
+    <string name="settings_status_dnd">Do not disturb</string>
+    <string name="settings_status_invisible">Invisible</string>
+    <string name="settings_afk">Keep phone notifications</string>
+    <string name="settings_multiple">Show multiple activities</string>
+    <string name="settings_idle_disconnect">Disconnect when idle after</string>
+    <string name="settings_debounce">Update delay</string>
+    <string name="settings_app_id">Application ID</string>
+    <string name="settings_app_id_hint">Leave empty for default</string>
+    <string name="settings_advanced">Advanced</string>
+    <string name="settings_lean">Lean connection</string>
+    <string name="settings_compression">Compression</string>
+
+    <string name="settings_media">Media</string>
+    <string name="settings_paused_grace">Keep paused media for</string>
+    <string name="settings_min_duration">Ignore media shorter than</string>
+    <string name="settings_new_apps">Include new apps</string>
+
+    <string name="settings_apps">Apps &amp; games</string>
+    <string name="settings_auto_games">Detect games</string>
+    <string name="settings_poll">Check every</string>
+    <string name="settings_linger">Keep after closing</string>
+
+    <string name="settings_spotify">Spotify Connect</string>
+    <string name="settings_spotify_enable">Use Spotify Connect</string>
+    <string name="settings_client_id">Client ID</string>
+    <string name="settings_client_id_not_set">Not set</string>
+    <string name="settings_client_id_dashboard">developer.spotify.com/dashboard</string>
+    <string name="settings_redirect_uri">Redirect URI</string>
+    <string name="settings_copy">Copy</string>
+    <string name="settings_copied">Copied</string>
+    <string name="settings_spotify_account">Spotify account</string>
+    <string name="settings_spotify_signed_in">Signed in as %1$s</string>
+    <string name="settings_spotify_needs_id">Add a client ID first</string>
+    <string name="settings_spotify_sign_out_confirm">Sign out of Spotify?</string>
+    <string name="settings_spotify_poll">Check while playing</string>
+    <string name="settings_spotify_idle_poll">Check while idle</string>
+    <string name="settings_spotify_skip_local">Pause while playing on this phone</string>
+
+    <string name="settings_images">Images</string>
+    <string name="settings_lookup">Album art lookup</string>
+    <string name="settings_lookup_itunes">iTunes</string>
+    <string name="settings_lookup_deezer">Deezer</string>
+    <string name="settings_host">Upload host</string>
+    <string name="settings_host_litterbox">Litterbox</string>
+    <string name="settings_host_catbox">Catbox</string>
+    <string name="settings_host_litterbox_summary">Kept for 72 h</string>
+    <string name="settings_host_catbox_summary">Kept permanently</string>
+
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_amoled">Pure black</string>
+    <string name="settings_haptics">Haptics</string>
+
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_perm_notification_access">Notification access</string>
+    <string name="settings_perm_notification_access_summary">Media sessions</string>
+    <string name="settings_perm_usage">Usage access</string>
+    <string name="settings_perm_usage_summary">Apps and games</string>
+    <string name="settings_perm_battery">Battery optimization</string>
+    <string name="settings_perm_battery_summary">Stay running in background</string>
+    <string name="settings_perm_notifications">Notifications</string>
+    <string name="settings_perm_notifications_summary">Status notification</string>
+    <string name="settings_grant">Grant</string>
+    <string name="settings_granted">Granted</string>
+
+    <string name="settings_more">More</string>
+    <string name="settings_log">Activity log</string>
+    <string name="settings_reset_rules">Reset rules</string>
+    <string name="settings_reset_rules_confirm">Reset all rules to defaults?</string>
+    <string name="settings_reset">Reset</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_version">Version</string>
+
+    <!-- Log -->
+    <string name="log_title">Activity log</string>
+    <string name="log_filter">Filter</string>
+    <string name="log_clear">Clear</string>
+    <string name="log_share">Share</string>
+    <string name="log_level_debug">Debug</string>
+    <string name="log_level_info">Info</string>
+    <string name="log_level_warn">Warning</string>
+    <string name="log_level_error">Error</string>
+</resources>
