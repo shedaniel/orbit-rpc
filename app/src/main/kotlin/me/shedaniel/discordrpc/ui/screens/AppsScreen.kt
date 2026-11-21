@@ -126,8 +126,8 @@ fun AppsScreen(contentPadding: PaddingValues) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
         Text(
             stringResource(R.string.tab_apps),
-            style = MaterialTheme.typography.displaySmallEmphasized,
-            modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp),
+            style = MaterialTheme.typography.displaySmall,
+            modifier = Modifier.padding(start = 16.dp, top = 88.dp, bottom = 16.dp),
         )
         TextField(
             value = query,
