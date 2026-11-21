@@ -153,8 +153,10 @@ fun OnboardingScreen() {
     val shape = animatedMorphShape(step.polygon, rotation = spin)
     val scheme = MaterialTheme.colorScheme
 
+    // A Surface (not just a background) so text picks up onSurface in both themes.
+    androidx.compose.material3.Surface(color = scheme.surface, modifier = Modifier.fillMaxSize()) {
     Column(
-        Modifier.fillMaxSize().background(scheme.surface).statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Progress as a row of shapes.
@@ -248,5 +250,6 @@ fun OnboardingScreen() {
                 Text(stringResource(R.string.onb_restricted), style = MaterialTheme.typography.labelMedium)
             }
         }
+    }
     }
 }

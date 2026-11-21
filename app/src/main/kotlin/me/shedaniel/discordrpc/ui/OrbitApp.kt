@@ -55,7 +55,7 @@ fun OrbitApp() {
             LocalHapticsEnabled provides settings.ui.haptics,
         ) {
             SharedTransitionLayout(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                CompositionLocalProvider(LocalSharedScope provides this) {
+                CompositionLocalProvider(LocalSharedScope provides this, androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<androidx.compose.ui.unit.IntOffset>()
                     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                     NavDisplay(
