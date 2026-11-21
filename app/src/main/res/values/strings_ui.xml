@@ -131,9 +131,13 @@
     <string name="apps_sheet_name">Display name</string>
     <string name="apps_off">Off</string>
     <string name="apps_show">Show</string>
-    <string name="apps_kind_auto">Auto · %1$s</string>
-    <string name="apps_open_auto_game">Shown, because it\'s a game</string>
-    <string name="apps_open_auto_app">Not shown</string>
+    <string name="apps_open_auto_shown">Shown</string>
+    <string name="apps_open_auto_hidden">Hidden</string>
+    <string name="apps_cat_music">Music app</string>
+    <string name="apps_cat_video">Video app</string>
+    <string name="apps_cat_podcast">Podcast app</string>
+    <string name="apps_cat_game">Game</string>
+    <string name="apps_cat_other">App</string>
 
     <!-- Onboarding -->
     <string name="onb_discord_title">Sign in to Discord</string>

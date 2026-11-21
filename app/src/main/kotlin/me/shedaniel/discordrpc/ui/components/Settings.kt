@@ -1,6 +1,18 @@
 package me.shedaniel.discordrpc.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +25,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
@@ -24,6 +37,7 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -31,12 +45,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import me.shedaniel.discordrpc.R
 import me.shedaniel.discordrpc.ui.theme.NumberFamily
 import me.shedaniel.discordrpc.ui.theme.rememberHaptics
 import kotlin.math.roundToInt
@@ -149,7 +171,10 @@ fun InfoItem(
     ) { Text(title) }
 }
 
-/** A slider with the value shown as a number, ticking haptically on each step. */
+/**
+ * A slider with its value as a number. The title row and the slider share the full content width so the track
+ * runs under the value, and the item keeps even padding above the title and below the thumb.
+ */
 @Composable
 fun SliderItem(
     shapes: ListItemShapes,
@@ -170,8 +195,19 @@ fun SliderItem(
         shapes = shapes,
         enabled = enabled,
         colors = groupColors(),
+        verticalAlignment = Alignment.Top,
         leadingContent = icon?.let { { Leading(it) } },
-        supportingContent = {
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f))
+                Text(
+                    format(live.roundToInt()),
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = NumberFamily),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
             Slider(
                 value = live,
                 onValueChange = {
@@ -183,21 +219,34 @@ fun SliderItem(
                 valueRange = range.first.toFloat()..range.last.toFloat(),
                 steps = steps,
                 enabled = enabled,
+                modifier = Modifier.padding(top = 2.dp),
             )
-        },
-        trailingContent = {
-            Text(
-                format(live.roundToInt()),
-                style = MaterialTheme.typography.titleMedium.copy(fontFamily = NumberFamily),
-                color = MaterialTheme.colorScheme.primary,
-            )
-        },
-    ) { Text(title) }
+        }
+    }
 }
 
-data class Choice<T>(val value: T, val label: String, val icon: ImageVector? = null)
+/**
+ * One option of a [ChoiceRow]. [detail] is a resolved value shown inside the segment while it is selected
+ * (e.g. "Auto" resolving to "Music"); [glyph] replaces [icon] with custom drawing; [marked] adds a small dot.
+ */
+data class Choice<T>(
+    val value: T,
+    val label: String,
+    val icon: ImageVector? = null,
+    val detail: String? = null,
+    val marked: Boolean = false,
+    val glyph: (@Composable () -> Unit)? = null,
+)
 
-/** Connected button group for picking one of a few options. */
+/** How a [ChoiceRow] lays out each segment. */
+enum class ChoiceStyle {
+    /** Icon and label side by side. */
+    Inline,
+    /** Icon over label in a taller segment, for four or more options. */
+    Stacked,
+}
+
+/** Full-width connected button group for picking one of a few options. */
 @Composable
 fun <T> ChoiceRow(
     choices: List<Choice<T>>,
@@ -205,11 +254,25 @@ fun <T> ChoiceRow(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     showLabels: Boolean = true,
+    style: ChoiceStyle = ChoiceStyle.Inline,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
 ) {
     val haptics = rememberHaptics()
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+    val scheme = MaterialTheme.colorScheme
+    val colors = ToggleButtonDefaults.colors(
+        containerColor = containerColor,
+        contentColor = scheme.onSurfaceVariant,
+        checkedContainerColor = scheme.primary,
+        checkedContentColor = scheme.onPrimary,
+    )
+    val stacked = style == ChoiceStyle.Stacked
+    Row(
+        modifier.fillMaxWidth().then(if (stacked) Modifier.height(IntrinsicSize.Min) else Modifier),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+    ) {
         choices.forEachIndexed { i, c ->
             val checked = c.value == selected
+            val detail = c.detail?.takeIf { checked }
             ToggleButton(
                 checked = checked,
                 onCheckedChange = { if (!checked) { haptics.tick(); onSelect(c.value) } },
@@ -219,19 +282,74 @@ fun <T> ChoiceRow(
                     i == choices.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
-                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+                colors = colors,
+                modifier = Modifier
+                    .weight(1f)
+                    .then(if (stacked) Modifier.fillMaxHeight().heightIn(min = 64.dp) else Modifier)
+                    .semantics {
+                        role = Role.RadioButton
+                        if (!showLabels) contentDescription = c.label
+                    },
+                contentPadding = if (stacked) PaddingValues(horizontal = 4.dp, vertical = 8.dp) else PaddingValues(horizontal = 8.dp),
             ) {
-                if (c.icon != null) {
-                    Icon(c.icon, null, Modifier.size(18.dp))
-                    if (showLabels) Spacer(Modifier.width(6.dp))
+                val glyph: @Composable () -> Unit = {
+                    val g = c.glyph
+                    when {
+                        g != null -> g()
+                        c.icon != null -> Icon(c.icon, null, Modifier.size(18.dp))
+                    }
                 }
-                if (showLabels || c.icon == null) Text(c.label, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
+                val hasGlyph = c.icon != null || c.glyph != null
+                if (stacked) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            glyph()
+                            if (c.marked) MarkDot(Modifier.padding(start = 4.dp))
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            c.label, maxLines = 2, textAlign = TextAlign.Center,
+                            overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium,
+                        )
+                        if (c.detail != null) {
+                            // Always laid out so the group keeps its height; only fades with selection.
+                            val shown by animateFloatAsState(if (detail != null) 0.78f else 0f, MaterialTheme.motionScheme.fastEffectsSpec(), label = "detail")
+                            Text(
+                                c.detail, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.graphicsLayer { alpha = shown },
+                            )
+                        }
+                    }
+                } else {
+                    if (hasGlyph) {
+                        glyph()
+                        if (showLabels) Spacer(Modifier.width(6.dp))
+                    }
+                    if (showLabels || !hasGlyph) {
+                        Text(
+                            if (detail != null) "${c.label} · $detail" else c.label,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                    if (c.marked) MarkDot(Modifier.padding(start = 6.dp))
+                }
             }
         }
     }
 }
 
+/** Small dot in the content color, e.g. marking the network in use. */
+@Composable
+private fun MarkDot(modifier: Modifier = Modifier) {
+    val color = LocalContentColor.current
+    Canvas(modifier.size(6.dp)) { drawCircle(color) }
+}
+
+/**
+ * A titled item whose button group spans the full item width (the title row carries the icon, so the group is
+ * not indented by a leading slot).
+ */
 @Composable
 fun <T> ChoiceItem(
     shapes: ListItemShapes,
@@ -241,18 +359,56 @@ fun <T> ChoiceItem(
     onSelect: (T) -> Unit,
     icon: ImageVector? = null,
     summary: String? = null,
+    leading: (@Composable () -> Unit)? = null,
+    style: ChoiceStyle = ChoiceStyle.Inline,
 ) {
     SegmentedListItem(
         shapes = shapes,
         colors = groupColors(),
-        leadingContent = icon?.let { { Leading(it) } },
-        verticalAlignment = Alignment.Top,
-        supportingContent = {
-            Column {
-                if (summary != null) Text(summary)
-                Spacer(Modifier.height(10.dp))
-                ChoiceRow(choices, selected, onSelect)
+    ) {
+        Column(Modifier.padding(vertical = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    if (leading != null) leading() else Leading(icon)
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(title)
+                    AnimatedContent(
+                        summary,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
+                        label = "summary",
+                    ) { s ->
+                        if (s != null) {
+                            Text(s, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
             }
+            Spacer(Modifier.height(12.dp))
+            ChoiceRow(choices, selected, onSelect, style = style)
+        }
+    }
+}
+
+/** A row that expands to reveal more items below it; the chevron turns and the device ticks. */
+@Composable
+fun ExpandItem(shapes: ListItemShapes, title: String, expanded: Boolean, onToggle: (Boolean) -> Unit, icon: ImageVector? = null) {
+    val haptics = rememberHaptics()
+    val turn by animateFloatAsState(if (expanded) 180f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "chevron")
+    val state = stringResource(if (expanded) R.string.settings_expanded else R.string.settings_collapsed)
+    SegmentedListItem(
+        onClick = { haptics.tick(); onToggle(!expanded) },
+        shapes = shapes,
+        colors = groupColors(),
+        leadingContent = icon?.let { { Leading(it) } },
+        trailingContent = {
+            Icon(
+                Icons.Rounded.ExpandMore, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.rotate(turn),
+            )
         },
+        modifier = Modifier.semantics { stateDescription = state },
     ) { Text(title) }
 }

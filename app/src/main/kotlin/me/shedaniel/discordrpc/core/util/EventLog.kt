@@ -32,4 +32,7 @@ object EventLog {
     }
 
     fun clear() = _entries.update { emptyList() }
+
+    /** Puts [previous] back in front of anything logged since (undo for [clear]). */
+    fun restore(previous: List<Entry>) = _entries.update { (previous + it).takeLast(MAX) }
 }

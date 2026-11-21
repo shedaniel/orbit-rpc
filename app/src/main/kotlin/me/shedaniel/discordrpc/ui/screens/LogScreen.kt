@@ -3,6 +3,7 @@ package me.shedaniel.discordrpc.ui.screens
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,6 +11,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,7 +43,16 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +72,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +84,7 @@ import me.shedaniel.discordrpc.ui.components.rememberSpin
 import me.shedaniel.discordrpc.ui.nav.LocalNavigator
 import me.shedaniel.discordrpc.ui.theme.NumberFamily
 import me.shedaniel.discordrpc.ui.theme.rememberHaptics
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -112,6 +126,11 @@ fun LogScreen() {
     val entries by EventLog.entries.collectAsStateWithLifecycle()
     var showFilter by rememberSaveable { mutableStateOf(false) }
     var hidden by rememberSaveable { mutableStateOf(setOf<EventLog.Level>()) }
+    var expanded by rememberSaveable { mutableStateOf(setOf<String>()) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val clearedLabel = stringResource(R.string.log_cleared)
+    val undoLabel = stringResource(R.string.log_undo)
 
     // Newest first, with stable keys (time + content, disambiguated for repeats).
     val keyed = remember(entries) {
@@ -135,19 +154,25 @@ fun LogScreen() {
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             Column {
                 MediumFlexibleTopAppBar(
                     title = { Text(stringResource(R.string.log_title)) },
                     navigationIcon = {
-                        IconButton(onClick = { haptics.press(); nav.pop() }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.screen_back))
+                        Tip(stringResource(R.string.screen_back)) {
+                            IconButton(onClick = { haptics.press(); nav.pop() }) {
+                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.screen_back))
+                            }
                         }
                     },
                     actions = {
-                        IconToggleButton(checked = showFilter || hidden.isNotEmpty(), onCheckedChange = { haptics.toggle(it); showFilter = !showFilter }) {
-                            Icon(Icons.Rounded.FilterList, stringResource(R.string.log_filter))
+                        Tip(stringResource(R.string.log_filter)) {
+                            IconToggleButton(checked = showFilter || hidden.isNotEmpty(), onCheckedChange = { haptics.toggle(it); showFilter = !showFilter }) {
+                                Icon(Icons.Rounded.FilterList, stringResource(R.string.log_filter))
+                            }
                         }
+                        Tip(stringResource(R.string.log_share)) {
                         IconButton(
                             onClick = {
                                 haptics.press()
@@ -159,8 +184,22 @@ fun LogScreen() {
                             },
                             enabled = entries.isNotEmpty(),
                         ) { Icon(Icons.Rounded.Share, stringResource(R.string.log_share)) }
-                        IconButton(onClick = { haptics.confirm(); EventLog.clear() }, enabled = entries.isNotEmpty()) {
-                            Icon(Icons.Rounded.DeleteSweep, stringResource(R.string.log_clear))
+                        }
+                        Tip(stringResource(R.string.log_clear)) {
+                            IconButton(
+                                onClick = {
+                                    haptics.confirm()
+                                    val previous = entries
+                                    EventLog.clear()
+                                    expanded = emptySet()
+                                    scope.launch {
+                                        snackbar.currentSnackbarData?.dismiss()
+                                        val result = snackbar.showSnackbar(clearedLabel, undoLabel, duration = SnackbarDuration.Short)
+                                        if (result == SnackbarResult.ActionPerformed) { haptics.tick(); EventLog.restore(previous) }
+                                    }
+                                },
+                                enabled = entries.isNotEmpty(),
+                            ) { Icon(Icons.Rounded.DeleteSweep, stringResource(R.string.log_clear)) }
                         }
                     },
                     scrollBehavior = scrollBehavior,
@@ -206,18 +245,21 @@ fun LogScreen() {
                     )
                 }
             } else {
-                SelectionContainer {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            top = inner.calculateTopPadding() + 4.dp,
-                            bottom = inner.calculateBottomPadding() + 16.dp,
-                        ),
-                    ) {
-                        items(visible, key = { it.key }) { k ->
-                            LogRow(k.entry, timeFormat, Modifier.animateItem())
-                        }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = inner.calculateTopPadding() + 4.dp,
+                        bottom = inner.calculateBottomPadding() + 16.dp,
+                    ),
+                ) {
+                    items(visible, key = { it.key }) { k ->
+                        val open = k.key in expanded
+                        LogRow(
+                            k.entry, timeFormat, open,
+                            onToggle = { haptics.tick(); expanded = if (open) expanded - k.key else expanded + k.key },
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
             }
@@ -225,45 +267,109 @@ fun LogScreen() {
     }
 }
 
+/** Icon button label shown on long-press, for the top bar's glyph-only actions. */
 @Composable
-private fun LogRow(e: EventLog.Entry, timeFormat: SimpleDateFormat, modifier: Modifier = Modifier) {
+private fun Tip(label: String, content: @Composable () -> Unit) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+        content = content,
+    )
+}
+
+private val Bullet = Regex("""^[▶■●◆►•→*>\s-]+""")
+private val Bracketed = Regex("""\[[A-Z0-9_]+]""")
+private val KeyValue = Regex("""(^|\s)[\w.]+=\S+""")
+private val Numeric = Regex("""(^|\s)(@?\d+(\.\d+)?(ms|s)?|\d+x\d+)(?=\s|$)""")
+private val Spaces = Regex("""\s+""")
+
+/** The human part of a log line: first line, minus bullets, [TAGS], key=value pairs and bare numbers. */
+internal fun cleanLogLine(message: String): String {
+    val first = message.lineSequence().firstOrNull().orEmpty()
+    val t = first
+        .replace(Bullet, "")
+        .replace(Bracketed, " ")
+        .replace(KeyValue, " ")
+        .replace(Numeric, " ")
+        .replace(Spaces, " ")
+        .trim()
+        .trimEnd(':', ',', ';')
+    return t.ifBlank { first.trim() }
+}
+
+@Composable
+private fun LogRow(e: EventLog.Entry, timeFormat: SimpleDateFormat, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
     val error = e.level == EventLog.Level.ERROR
+    val clean = remember(e.message) { cleanLogLine(e.message) }
+    val hasDetails = clean != e.message.trim()
+    val container by animateColorAsState(
+        when {
+            error -> scheme.errorContainer.copy(alpha = if (expanded) 0.7f else 0.45f)
+            expanded -> scheme.surfaceContainer
+            else -> scheme.surfaceContainer.copy(alpha = 0f)
+        },
+        label = "row",
+    )
     Row(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 2.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(if (error) scheme.errorContainer.copy(alpha = 0.45f) else Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .clip(MaterialTheme.shapes.large)
+            .background(container)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        LevelGlyph(e.level, Modifier.padding(top = 3.dp))
+        LevelGlyph(e.level, Modifier.padding(top = 4.dp), size = 14.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = CircleShape, color = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer) {
+                    Text(
+                        e.tag,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp),
+                        maxLines = 1,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
                 Text(
                     remember(e.timeMs) { timeFormat.format(Date(e.timeMs)) },
                     style = MaterialTheme.typography.labelMedium.copy(fontFamily = NumberFamily),
                     color = scheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.width(8.dp))
-                Surface(shape = CircleShape, color = scheme.surfaceContainerHigh) {
-                    Text(
-                        e.tag,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = scheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp),
-                        maxLines = 1,
-                    )
-                }
             }
             Text(
-                e.message,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                clean,
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (e.level == EventLog.Level.DEBUG) scheme.onSurfaceVariant else scheme.onSurface,
-                modifier = Modifier.padding(top = 2.dp),
+                maxLines = if (expanded) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
             )
+            AnimatedVisibility(
+                expanded && hasDetails,
+                enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                exit = shrinkVertically(motion.fastSpatialSpec()) + fadeOut(motion.fastEffectsSpec()),
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = scheme.surfaceContainerHighest,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                ) {
+                    SelectionContainer {
+                        Text(
+                            e.message,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }

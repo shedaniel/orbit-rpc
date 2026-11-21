@@ -25,10 +25,7 @@
         <item quantity="one">%1$d request</item>
         <item quantity="other">%1$d requests</item>
     </plurals>
-    <string name="data_android_counted">Android counted</string>
-    <string name="data_measured">Measured %1$s</string>
-    <string name="data_unknown">—</string>
-    <string name="data_policy">On this network</string>
+    <string name="data_system">System %1$s</string>
     <string name="data_cat_gateway">Discord connection</string>
     <string name="data_cat_api">Discord API</string>
     <string name="data_cat_artwork">Album art lookup</string>
@@ -46,6 +43,8 @@
     <string name="data_roaming">Pause while roaming</string>
     <string name="data_saver">Follow Data Saver</string>
     <string name="data_saver_summary">Presence only</string>
+    <string name="data_p_no_source">No source chosen</string>
+    <string name="data_p_spotify_off">Not set up</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
@@ -99,10 +98,10 @@
     <string name="settings_spotify_skip_local">Pause while playing on this phone</string>
 
     <string name="settings_images">Images</string>
-    <string name="settings_lookup">Album art lookup</string>
+    <string name="settings_lookup">Album art source</string>
     <string name="settings_lookup_itunes">iTunes</string>
     <string name="settings_lookup_deezer">Deezer</string>
-    <string name="settings_host">Upload host</string>
+    <string name="settings_host">Upload to</string>
     <string name="settings_host_litterbox">Litterbox</string>
     <string name="settings_host_catbox">Catbox</string>
     <string name="settings_host_litterbox_summary">Kept for 72 h</string>
@@ -116,6 +115,12 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_amoled">Pure black</string>
     <string name="settings_haptics">Haptics</string>
+    <string name="settings_general">General</string>
+    <string name="settings_expanded">Expanded</string>
+    <string name="settings_collapsed">Collapsed</string>
+    <string name="settings_net_off_wifi">Off on Wi-Fi</string>
+    <string name="settings_net_off_mobile">Off on mobile data</string>
+    <string name="settings_net_off_all">Off on every network</string>
 
     <string name="settings_permissions">Permissions</string>
     <string name="settings_perm_notification_access">Notification access</string>
@@ -146,6 +151,8 @@
     <string name="log_level_info">Info</string>
     <string name="log_level_warn">Warning</string>
     <string name="log_level_error">Error</string>
+    <string name="log_cleared">Log cleared</string>
+    <string name="log_undo">Undo</string>
     <string name="settings_clear_images">Clear image cache</string>
     <string name="settings_clear_images_done">Cleared</string>
 </resources>

@@ -5,38 +5,25 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,16 +39,14 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.shedaniel.discordrpc.R
 import me.shedaniel.discordrpc.core.settings.OnlineStatus
+import me.shedaniel.discordrpc.ui.components.Choice
+import me.shedaniel.discordrpc.ui.components.ChoiceItem
+import me.shedaniel.discordrpc.ui.components.ChoiceStyle
 import me.shedaniel.discordrpc.ui.theme.rememberHaptics
 
 @Composable
@@ -177,62 +162,26 @@ internal fun StatusDot(status: OnlineStatus, modifier: Modifier = Modifier, size
     }
 }
 
-/**
- * Status picker: a connected button group where the selected button widens to show its label and the others
- * collapse to their status mark.
- */
+/** Status picker: four equal segments, each a status mark over its name. */
 @Composable
 internal fun StatusChoiceItem(shapes: ListItemShapes, title: String, selected: OnlineStatus, onSelect: (OnlineStatus) -> Unit) {
-    val haptics = rememberHaptics()
     val labels = mapOf(
         OnlineStatus.ONLINE to R.string.settings_status_online,
         OnlineStatus.IDLE to R.string.settings_status_idle,
         OnlineStatus.DND to R.string.settings_status_dnd,
         OnlineStatus.INVISIBLE to R.string.settings_status_invisible,
     )
-    val all = OnlineStatus.entries
-    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    SegmentedListItem(
+    ChoiceItem(
         shapes = shapes,
-        colors = settingsItemColors(),
-        verticalAlignment = Alignment.Top,
-        leadingContent = { StatusDot(selected, size = 20.dp) },
-        supportingContent = {
-            Column {
-                Spacer(Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-                    all.forEachIndexed { i, s ->
-                        val checked = s == selected
-                        val weight by animateFloatAsState(if (checked) 2.6f else 1f, spatial, label = "w")
-                        val label = androidx.compose.ui.res.stringResource(labels.getValue(s))
-                        ToggleButton(
-                            checked = checked,
-                            onCheckedChange = { if (!checked) { haptics.tick(); onSelect(s) } },
-                            shapes = when (i) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                all.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                            modifier = Modifier.weight(weight).semantics { role = Role.RadioButton; contentDescription = label },
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                        ) {
-                            StatusDot(s, size = 14.dp)
-                            AnimatedVisibility(
-                                checked,
-                                enter = fadeIn() + expandHorizontally(),
-                                exit = fadeOut() + shrinkHorizontally(),
-                            ) {
-                                Row {
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        title = title,
+        choices = OnlineStatus.entries.map { s ->
+            Choice(s, androidx.compose.ui.res.stringResource(labels.getValue(s)), glyph = { StatusDot(s, size = 16.dp) })
         },
-    ) { Text(title) }
+        selected = selected,
+        onSelect = onSelect,
+        leading = { StatusDot(selected, size = 20.dp) },
+        style = ChoiceStyle.Stacked,
+    )
 }
 
 /** Trailing status for a permission row: a check glyph when granted, a tonal button otherwise. */

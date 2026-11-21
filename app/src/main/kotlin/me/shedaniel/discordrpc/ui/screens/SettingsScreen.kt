@@ -68,6 +68,7 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.TimerOff
 import androidx.compose.material.icons.rounded.Update
 import androidx.compose.material.icons.rounded.Vibration
@@ -112,6 +113,7 @@ import me.shedaniel.discordrpc.ui.components.Avatar
 import me.shedaniel.discordrpc.ui.components.Choice
 import me.shedaniel.discordrpc.ui.components.ChoiceItem
 import me.shedaniel.discordrpc.ui.components.ClickItem
+import me.shedaniel.discordrpc.ui.components.ExpandItem
 import me.shedaniel.discordrpc.ui.components.InfoItem
 import me.shedaniel.discordrpc.ui.components.PolygonShape
 import me.shedaniel.discordrpc.ui.components.SettingsGroup
@@ -211,7 +213,11 @@ fun SettingsScreen() {
                 val d = settings.discord
                 val setD: ((me.shedaniel.discordrpc.core.settings.DiscordSettings) -> me.shedaniel.discordrpc.core.settings.DiscordSettings) -> Unit =
                     { f -> update { it.copy(discord = f(it.discord)) } }
-                SettingsGroup(stringResource(R.string.settings_discord)) {
+                var advanced by rememberSaveable { mutableStateOf(false) }
+                SettingsGroup(
+                    stringResource(R.string.settings_discord),
+                    Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                ) {
                     item { StatusChoiceItem(it, stringResource(R.string.settings_status), d.status) { s -> setD { it.copy(status = s) } } }
                     item { SwitchItem(it, stringResource(R.string.settings_afk), d.afk, { v -> setD { it.copy(afk = v) } }, icon = Icons.Rounded.NotificationsActive) }
                     item { SwitchItem(it, stringResource(R.string.settings_multiple), d.multipleActivities, { v -> setD { it.copy(multipleActivities = v) } }, icon = Icons.Rounded.Layers) }
@@ -229,17 +235,18 @@ fun SettingsScreen() {
                             format = { ms -> formatMillisPlain(context, ms) },
                         )
                     }
-                    item {
-                        ClickItem(
-                            it, stringResource(R.string.settings_app_id), { dialog = SettingsDialog.APP_ID },
-                            icon = Icons.Rounded.Tag,
-                            summary = d.applicationId.ifBlank { stringResource(R.string.screen_default) },
-                        )
+                    item { ExpandItem(it, stringResource(R.string.settings_advanced), advanced, { v -> advanced = v }, icon = Icons.Rounded.Tune) }
+                    if (advanced) {
+                        item { SwitchItem(it, stringResource(R.string.settings_lean), d.leanGateway, { v -> setD { it.copy(leanGateway = v) } }, icon = Icons.Rounded.Bolt) }
+                        item { SwitchItem(it, stringResource(R.string.settings_compression), d.compression, { v -> setD { it.copy(compression = v) } }, icon = Icons.Rounded.Compress) }
+                        item {
+                            ClickItem(
+                                it, stringResource(R.string.settings_app_id), { dialog = SettingsDialog.APP_ID },
+                                icon = Icons.Rounded.Tag,
+                                summary = d.applicationId.ifBlank { stringResource(R.string.screen_default) },
+                            )
+                        }
                     }
-                }
-                SettingsGroup(stringResource(R.string.settings_advanced)) {
-                    item { SwitchItem(it, stringResource(R.string.settings_lean), d.leanGateway, { v -> setD { it.copy(leanGateway = v) } }, icon = Icons.Rounded.Bolt) }
-                    item { SwitchItem(it, stringResource(R.string.settings_compression), d.compression, { v -> setD { it.copy(compression = v) } }, icon = Icons.Rounded.Compress) }
                 }
             }
 
@@ -300,6 +307,7 @@ fun SettingsScreen() {
             // ---- Spotify Connect
             item(key = "spotify") {
                 val sp = settings.spotify
+                val net = settings.network
                 SettingsGroup(
                     stringResource(R.string.settings_spotify),
                     Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
@@ -308,6 +316,7 @@ fun SettingsScreen() {
                         SwitchItem(
                             it, stringResource(R.string.settings_spotify_enable), sp.enabled,
                             { v -> update { s -> s.copy(spotify = s.spotify.copy(enabled = v)) } }, icon = Icons.Rounded.Speaker,
+                            summary = if (sp.enabled) networkNote(net.wifi.spotifyConnect, net.cellular.spotifyConnect) else null,
                         )
                     }
                     if (sp.enabled) {
@@ -365,6 +374,7 @@ fun SettingsScreen() {
             // ---- Images
             item(key = "images") {
                 val im = settings.images
+                val net = settings.network
                 SettingsGroup(stringResource(R.string.settings_images)) {
                     item {
                         ChoiceItem(
@@ -375,6 +385,7 @@ fun SettingsScreen() {
                                 Choice(ArtworkLookup.DEEZER, stringResource(R.string.settings_lookup_deezer)),
                             ),
                             im.lookup, { v -> update { s -> s.copy(images = s.images.copy(lookup = v)) } }, icon = Icons.Rounded.Album,
+                            summary = if (im.lookup != ArtworkLookup.NONE) networkNote(net.wifi.artworkLookup, net.cellular.artworkLookup) else null,
                         )
                     }
                     item {
@@ -390,6 +401,8 @@ fun SettingsScreen() {
                                 ImageHost.LITTERBOX -> stringResource(R.string.settings_host_litterbox_summary)
                                 ImageHost.CATBOX -> stringResource(R.string.settings_host_catbox_summary)
                                 ImageHost.NONE -> null
+                            }?.let { kept ->
+                                listOfNotNull(kept, networkNote(net.wifi.uploadImages, net.cellular.uploadImages)).joinToString(" · ")
                             },
                         )
                     }
@@ -408,7 +421,10 @@ fun SettingsScreen() {
             // ---- Appearance
             item(key = "appearance") {
                 val ui = settings.ui
-                SettingsGroup(stringResource(R.string.settings_appearance)) {
+                SettingsGroup(
+                    stringResource(R.string.settings_appearance),
+                    Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                ) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         item {
                             SwitchItem(
@@ -428,16 +444,25 @@ fun SettingsScreen() {
                             ui.themeMode, { v -> update { s -> s.copy(ui = s.ui.copy(themeMode = v)) } }, icon = Icons.Rounded.Contrast,
                         )
                     }
-                    item {
-                        SwitchItem(
-                            it, stringResource(R.string.settings_amoled), ui.amoled,
-                            { v -> update { s -> s.copy(ui = s.ui.copy(amoled = v)) } },
-                            icon = Icons.Rounded.DarkMode, enabled = ui.themeMode != 1,
-                        )
+                    // Pure black only means something when the theme can be dark.
+                    if (ui.themeMode != 1) {
+                        item {
+                            SwitchItem(
+                                it, stringResource(R.string.settings_amoled), ui.amoled,
+                                { v -> update { s -> s.copy(ui = s.ui.copy(amoled = v)) } },
+                                icon = Icons.Rounded.DarkMode,
+                            )
+                        }
                     }
+                }
+            }
+
+            // ---- General
+            item(key = "general") {
+                SettingsGroup(stringResource(R.string.settings_general)) {
                     item {
                         SwitchItem(
-                            it, stringResource(R.string.settings_haptics), ui.haptics,
+                            it, stringResource(R.string.settings_haptics), settings.ui.haptics,
                             { v -> update { s -> s.copy(ui = s.ui.copy(haptics = v)) } }, icon = Icons.Rounded.Vibration,
                         )
                     }
@@ -618,6 +643,15 @@ private fun PermissionItem(
             }
         },
     )
+}
+
+/** "Off on mobile data" and friends, from the per-network switches on the Data tab; null when on everywhere. */
+@Composable
+private fun networkNote(wifi: Boolean, cellular: Boolean): String? = when {
+    wifi && cellular -> null
+    wifi -> stringResource(R.string.settings_net_off_mobile)
+    cellular -> stringResource(R.string.settings_net_off_wifi)
+    else -> stringResource(R.string.settings_net_off_all)
 }
 
 private fun hasPostNotifications(context: Context): Boolean =
