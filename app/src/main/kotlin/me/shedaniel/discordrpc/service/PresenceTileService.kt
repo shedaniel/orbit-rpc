@@ -11,7 +11,10 @@ class PresenceTileService : TileService() {
     override fun onClick() {
         val g = graph
         g.settingsStore.update { it.copy(enabled = !it.enabled) }
-        if (g.settingsStore.value.enabled) PresenceService.start(this) else PresenceService.stop(this)
+        if (g.settingsStore.value.enabled) {
+            // Keep the master switch honest if the system won't let us start from here.
+            if (!PresenceService.start(this)) g.settingsStore.update { it.copy(enabled = false) }
+        } else PresenceService.stop(this)
         refresh()
     }
 

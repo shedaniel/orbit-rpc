@@ -129,12 +129,13 @@ class PresenceService : LifecycleService() {
             }
         }
 
-        fun start(context: Context) {
-            try {
-                ContextCompat.startForegroundService(context, Intent(context, PresenceService::class.java))
-            } catch (e: Exception) {
-                EventLog.w("Service", "Could not start the foreground service", e)
-            }
+        /** Returns false when the system refused (e.g. background FGS start restrictions on Android 12+). */
+        fun start(context: Context): Boolean = try {
+            ContextCompat.startForegroundService(context, Intent(context, PresenceService::class.java))
+            true
+        } catch (e: Exception) {
+            EventLog.w("Service", "Could not start the foreground service", e)
+            false
         }
 
         fun stop(context: Context) {
