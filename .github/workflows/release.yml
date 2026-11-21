@@ -48,7 +48,7 @@ jobs:
           ORBIT_KEY_ALIAS: ${{ secrets.ORBIT_KEY_ALIAS }}
           ORBIT_KEY_PASSWORD: ${{ secrets.ORBIT_KEY_PASSWORD }}
         run: |
-          ./gradlew :app:testReleaseUnitTest :app:assembleRelease \
+          ./gradlew :app:testDebugUnitTest :app:assembleRelease \
             -PappVersionName=${{ steps.version.outputs.name }} \
             -PappVersionCode=${{ steps.version.outputs.code }}
           mkdir -p dist
