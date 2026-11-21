@@ -1,5 +1,12 @@
 package me.shedaniel.discordrpc.ui.screens
 
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -140,6 +147,9 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var pickApps by rememberSaveable { mutableStateOf(false) }
+    var chooseApps by rememberSaveable {
+        mutableStateOf(when (val t = original.trigger) { is Trigger.Media -> t.packages.isNotEmpty(); is Trigger.App -> t.packages.isNotEmpty(); else -> false })
+    }
 
     val engine by graph.engine.state.collectAsStateWithLifecycle()
     val user by graph.tokens.user.collectAsStateWithLifecycle()
@@ -186,7 +196,19 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
                     if (!draft.builtIn && !isNew) {
                         IconButton(onClick = { haptics.press(); confirmDelete = true }) { Icon(Icons.Rounded.Delete, stringResource(R.string.action_delete)) }
                     }
-                    Button(onClick = ::save, modifier = Modifier.padding(end = 8.dp)) {
+                    // Tonal until there's something to save.
+                    val emphasise = dirty || isNew
+                    val saveContainer by androidx.compose.animation.animateColorAsState(
+                        if (emphasise) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer, label = "save",
+                    )
+                    val saveContent by androidx.compose.animation.animateColorAsState(
+                        if (emphasise) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer, label = "saveContent",
+                    )
+                    Button(
+                        onClick = ::save,
+                        modifier = Modifier.padding(end = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = saveContainer, contentColor = saveContent),
+                    ) {
                         Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.action_save))
@@ -197,17 +219,25 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
             )
         },
     ) { inner ->
+        val contentScroll = rememberScrollState()
+        var previewHeight by remember { mutableStateOf(0) }
+        // Once the full preview scrolls away, a compact one stays pinned so edits remain visible.
+        val compact by remember { derivedStateOf { previewHeight > 0 && contentScroll.value > previewHeight } }
+        Box(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(top = inner.calculateTopPadding())
                 .imePadding()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(contentScroll)
                 .navigationBarsPadding()
                 .padding(bottom = 32.dp),
         ) {
             // Live preview, pinned to the top of the content.
-            Column(Modifier.padding(horizontal = 16.dp).animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec())) {
+            Column(
+                Modifier.padding(horizontal = 16.dp)
+                    .onSizeChanged { previewHeight = it.height }
+                    .animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
+            ) {
                 if (preview != null) {
                     PresenceCard(preview, Modifier.fillMaxWidth(), container = MaterialTheme.colorScheme.surfaceContainerHigh, previewUrl = { graph.assets.previewUrl(it) }, live = live != null)
                     Spacer(Modifier.height(8.dp))
@@ -225,7 +255,7 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
 
             // Identity: glyph + name.
             Section(stringResource(R.string.editor_section_rule)) {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("music", "video", "podcast", "game", "app", "always", "spotify").forEach { g ->
                         val selected = draft.glyph == g
                         Surface(
@@ -271,21 +301,52 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
                                 )
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        AppsField(t.packages, labelOf, anyLabel = stringResource(R.string.trigger_any_app), onPick = { pickApps = true }, onRemove = { p ->
-                            draft = draft.copy(trigger = t.copy(packages = t.packages - p))
-                        })
+                        Spacer(Modifier.height(12.dp))
+                        ChoiceRow(
+                            listOf(
+                                Choice(false, stringResource(R.string.trigger_any_app), Icons.Rounded.Apps),
+                                Choice(true, stringResource(R.string.editor_chosen_apps), Icons.Rounded.Checklist),
+                            ),
+                            chooseApps,
+                            { v ->
+                                chooseApps = v
+                                if (!v) draft = draft.copy(trigger = t.copy(packages = emptySet()))
+                                else if (t.packages.isEmpty()) pickApps = true
+                            },
+                        )
+                        AnimatedVisibility(chooseApps, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                            AppsField(t.packages, labelOf, anyLabel = null, onPick = { pickApps = true }, onRemove = { p ->
+                                draft = draft.copy(trigger = t.copy(packages = t.packages - p))
+                            }, modifier = Modifier.padding(top = 8.dp))
+                        }
                         ToggleRow(stringResource(R.string.editor_include_paused), t.includePaused) { draft = draft.copy(trigger = t.copy(includePaused = it)) }
                         ToggleRow(stringResource(R.string.editor_include_remote), t.includeRemote) { draft = draft.copy(trigger = t.copy(includeRemote = it)) }
                     }
                     is Trigger.App -> {
-                        ToggleRow(stringResource(R.string.editor_any_game), t.games && t.packages.isEmpty(), enabled = t.packages.isEmpty()) {
-                            draft = draft.copy(trigger = t.copy(games = it))
+                        // Games, apps marked in the Apps tab, or a hand-picked list.
+                        val mode = when { chooseApps || t.packages.isNotEmpty() -> 2; t.games -> 0; else -> 1 }
+                        ChoiceRow(
+                            listOf(
+                                Choice(0, stringResource(R.string.editor_any_game), Icons.Rounded.SportsEsports),
+                                Choice(1, stringResource(R.string.editor_marked_apps), Icons.Rounded.Apps),
+                                Choice(2, stringResource(R.string.editor_chosen_apps), Icons.Rounded.Checklist),
+                            ),
+                            mode,
+                            { v ->
+                                chooseApps = v == 2
+                                draft = draft.copy(trigger = when (v) {
+                                    0 -> Trigger.App(games = true)
+                                    1 -> Trigger.App(games = false)
+                                    else -> t.copy(games = false)
+                                })
+                                if (v == 2 && t.packages.isEmpty()) pickApps = true
+                            },
+                        )
+                        AnimatedVisibility(chooseApps, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                            AppsField(t.packages, labelOf, anyLabel = null, onPick = { pickApps = true }, onRemove = { p ->
+                                draft = draft.copy(trigger = t.copy(packages = t.packages - p))
+                            }, modifier = Modifier.padding(top = 8.dp))
                         }
-                        Spacer(Modifier.height(4.dp))
-                        AppsField(t.packages, labelOf, anyLabel = null, onPick = { pickApps = true }, onRemove = { p ->
-                            draft = draft.copy(trigger = t.copy(packages = t.packages - p))
-                        })
                     }
                     Trigger.Always -> Text(stringResource(R.string.trigger_always), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -387,6 +448,15 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
                 }
             }
         }
+        AnimatedVisibility(
+            compact && preview != null,
+            enter = slideInVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { -it } + fadeIn(),
+            exit = slideOutVertically { -it } + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            preview?.let { CompactPreview(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+        }
+        }
     }
 
     if (pickApps) {
@@ -467,16 +537,16 @@ private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, 
     ) {
         Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline)
-            androidx.compose.material3.Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+            me.shedaniel.discordrpc.ui.components.CheckSwitch(checked = checked, onCheckedChange = null, enabled = enabled)
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AppsField(packages: Set<String>, labelOf: (String) -> String, anyLabel: String?, onPick: () -> Unit, onRemove: (String) -> Unit) {
+private fun AppsField(packages: Set<String>, labelOf: (String) -> String, anyLabel: String?, onPick: () -> Unit, onRemove: (String) -> Unit, modifier: Modifier = Modifier) {
     val haptics = rememberHaptics()
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.animateContentSize()) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier.animateContentSize()) {
         if (packages.isEmpty() && anyLabel != null) {
             SuggestionChip(onClick = { haptics.press(); onPick() }, label = { Text(anyLabel) }, icon = { Icon(Icons.Rounded.Apps, null, Modifier.size(18.dp)) })
         }
@@ -580,6 +650,27 @@ private fun MemberRow(user: DiscordUser?, a: PresenceActivity) {
                 Text(user?.displayName ?: stringResource(R.string.editor_you), style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 AnimatedContent(stringResource(a.type.verbRes(), line), label = "member") {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** One line of the preview, pinned while the full card is scrolled away. */
+@Composable
+private fun CompactPreview(preview: PresenceActivity, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(shape = CircleShape, color = scheme.surfaceContainerHighest, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            ShapeGlyph(typeIcon(preview.type), MaterialShapes.Cookie9Sided, size = 36.dp, container = scheme.primaryContainer, content = scheme.onPrimaryContainer)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    stringResource(preview.type.verbRes(), preview.name),
+                    style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                listOfNotNull(preview.details, preview.state).filter { it.isNotBlank() }.joinToString(" · ").takeIf { it.isNotEmpty() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

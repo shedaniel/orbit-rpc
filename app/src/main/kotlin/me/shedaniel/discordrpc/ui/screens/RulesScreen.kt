@@ -3,6 +3,8 @@ package me.shedaniel.discordrpc.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +63,7 @@ import me.shedaniel.discordrpc.R
 import me.shedaniel.discordrpc.core.rules.Rule
 import me.shedaniel.discordrpc.core.rules.RulesEngine
 import me.shedaniel.discordrpc.graph
+import me.shedaniel.discordrpc.ui.components.CheckSwitch
 import me.shedaniel.discordrpc.ui.components.Glyphs
 import me.shedaniel.discordrpc.ui.components.ShapeGlyph
 import me.shedaniel.discordrpc.ui.components.glyphIcon
@@ -96,95 +101,112 @@ fun RulesScreen(contentPadding: PaddingValues) {
     BackHandler(fabExpanded) { fabExpanded = false }
     val fabVisible by remember { derivedStateOf { !listState.canScrollForward || listState.firstVisibleItemIndex == 0 } }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surface,
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(stringResource(R.string.rules_title)) },
-                scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer),
-            )
-        },
-    ) { inner ->
-        Box(Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(
-                    top = inner.calculateTopPadding() + 4.dp,
-                    bottom = contentPadding.calculateBottomPadding() + 96.dp,
-                    start = 16.dp, end = 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(rules, key = { it.id }) { rule ->
-                    ReorderableItem(reorder, key = rule.id) { dragging ->
-                        val index = rules.indexOf(rule)
-                        RuleCard(
-                            rule = rule,
-                            apps = apps,
-                            mediaApps = mediaApps,
-                            priority = index + 1,
-                            active = rule.id in activeRules,
-                            dragging = dragging,
-                            summary = describeTrigger(rule, labelOf),
-                            onClick = { haptics.press(); nav.push(Route.RuleEditor(rule.id)) },
-                            onToggle = { on ->
-                                haptics.toggle(on)
-                                graph.rulesStore.update { rs -> rs.copy(rules = rs.rules.map { if (it.id == rule.id) it.copy(enabled = on) else it }) }
-                            },
-                            handle = {
-                                Icon(
-                                    Icons.Rounded.DragIndicator,
-                                    contentDescription = stringResource(R.string.rules_reorder),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .draggableHandle(
-                                            onDragStarted = { haptics.dragStart() },
-                                            onDragStopped = {
-                                                haptics.gestureEnd()
-                                                val order = rules
-                                                graph.rulesStore.update { it.copy(rules = order) }
-                                            },
-                                        )
-                                        .padding(8.dp),
-                                )
-                            },
-                        )
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text(stringResource(R.string.rules_title)) },
+                    scrollBehavior = scroll,
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer),
+                )
+            },
+        ) { inner ->
+            Box(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        top = inner.calculateTopPadding() + 4.dp,
+                        bottom = contentPadding.calculateBottomPadding() + 96.dp,
+                        start = 16.dp, end = 16.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    items(rules, key = { it.id }) { rule ->
+                        ReorderableItem(reorder, key = rule.id) { dragging ->
+                            val index = rules.indexOf(rule)
+                            RuleCard(
+                                rule = rule,
+                                apps = apps,
+                                mediaApps = mediaApps,
+                                priority = index + 1,
+                                active = rule.id in activeRules,
+                                dragging = dragging,
+                                labelOf = labelOf,
+                                reordering = reorder.isAnyItemDragging,
+                                onClick = { haptics.press(); nav.push(Route.RuleEditor(rule.id)) },
+                                onToggle = { on ->
+                                    haptics.toggle(on)
+                                    graph.rulesStore.update { rs -> rs.copy(rules = rs.rules.map { if (it.id == rule.id) it.copy(enabled = on) else it }) }
+                                },
+                                handle = {
+                                    Icon(
+                                        Icons.Rounded.DragIndicator,
+                                        contentDescription = stringResource(R.string.rules_reorder),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .draggableHandle(
+                                                onDragStarted = { haptics.dragStart() },
+                                                onDragStopped = {
+                                                    haptics.gestureEnd()
+                                                    val order = rules
+                                                    graph.rulesStore.update { it.copy(rules = order) }
+                                                },
+                                            )
+                                            .padding(8.dp),
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
-            }
 
-            FloatingActionButtonMenu(
-                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = contentPadding.calculateBottomPadding()),
-                expanded = fabExpanded,
-                button = {
-                    ToggleFloatingActionButton(
-                        modifier = Modifier.animateFloatingActionButton(visible = fabVisible || fabExpanded, alignment = Alignment.BottomEnd),
-                        checked = fabExpanded,
-                        onCheckedChange = { haptics.toggle(it); fabExpanded = it },
-                    ) {
-                        val icon by remember { derivedStateOf { if (checkedProgress > 0.5f) Icons.Rounded.Close else Icons.Rounded.Add } }
-                        Icon(rememberVectorPainter(icon), stringResource(R.string.rules_new), Modifier.animateIcon({ checkedProgress }))
-                    }
-                },
-            ) {
-                listOf(
-                    Triple("media", Icons.Rounded.MusicNote, R.string.rules_new_media),
-                    Triple("app", Icons.Rounded.SportsEsports, R.string.rules_new_app),
-                    Triple("always", Icons.Rounded.AutoAwesome, R.string.rules_new_always),
-                ).forEach { (preset, icon, label) ->
-                    FloatingActionButtonMenuItem(
-                        onClick = {
-                            haptics.press()
-                            fabExpanded = false
-                            nav.push(Route.RuleEditor(null, preset))
-                        },
-                        icon = { Icon(icon, null) },
-                        text = { Text(stringResource(label)) },
-                    )
+            }
+        }
+
+        // Dim the list while the menu is open; tapping anywhere closes it.
+        val scrim by androidx.compose.animation.core.animateFloatAsState(
+            if (fabExpanded) 0.32f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "scrim",
+        )
+        if (scrim > 0f) {
+            Box(
+                Modifier.fillMaxSize()
+                    .graphicsLayer { alpha = scrim }
+                    .background(MaterialTheme.colorScheme.scrim)
+                    .pointerInput(Unit) { detectTapGestures { fabExpanded = false } },
+            )
+        }
+
+        FloatingActionButtonMenu(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = contentPadding.calculateBottomPadding()),
+            expanded = fabExpanded,
+            button = {
+                ToggleFloatingActionButton(
+                    modifier = Modifier.animateFloatingActionButton(visible = fabVisible || fabExpanded, alignment = Alignment.BottomEnd),
+                    checked = fabExpanded,
+                    onCheckedChange = { haptics.toggle(it); fabExpanded = it },
+                ) {
+                    val icon by remember { derivedStateOf { if (checkedProgress > 0.5f) Icons.Rounded.Close else Icons.Rounded.Add } }
+                    Icon(rememberVectorPainter(icon), stringResource(R.string.rules_new), Modifier.animateIcon({ checkedProgress }))
                 }
+            },
+        ) {
+            listOf(
+                Triple("media", Icons.Rounded.MusicNote, R.string.rules_new_media),
+                Triple("app", Icons.Rounded.SportsEsports, R.string.rules_new_app),
+                Triple("always", Icons.Rounded.AutoAwesome, R.string.rules_new_always),
+            ).forEach { (preset, icon, label) ->
+                FloatingActionButtonMenuItem(
+                    onClick = {
+                        haptics.press()
+                        fabExpanded = false
+                        nav.push(Route.RuleEditor(null, preset))
+                    },
+                    icon = { Icon(icon, null) },
+                    text = { Text(stringResource(label)) },
+                )
             }
         }
     }
@@ -198,7 +220,8 @@ private fun RuleCard(
     priority: Int,
     active: Boolean,
     dragging: Boolean,
-    summary: String,
+    labelOf: (String) -> String,
+    reordering: Boolean,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
     handle: @Composable () -> Unit,
@@ -212,6 +235,8 @@ private fun RuleCard(
             else -> scheme.surfaceContainer
         }, label = "container",
     )
+    // Tinted (active) cards need text drawn from their own palette to stay legible.
+    val secondary by animateColorAsState(if (active && !dragging) scheme.onSecondaryContainer.copy(alpha = 0.8f) else scheme.onSurfaceVariant, label = "secondary")
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.extraLarge,
@@ -226,14 +251,21 @@ private fun RuleCard(
                     container = if (rule.enabled) scheme.primaryContainer else scheme.surfaceContainerHighest,
                     content = if (rule.enabled) scheme.onPrimaryContainer else scheme.outline,
                 )
-                // Priority, by position.
-                Surface(shape = CircleShape, color = if (rule.enabled) scheme.primary else scheme.outline, modifier = Modifier.align(Alignment.BottomEnd).size(20.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            priority.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = NumberFamily),
-                            color = scheme.onPrimary,
-                        )
+                // Priority, by position; only matters while reordering.
+                androidx.compose.animation.AnimatedVisibility(
+                    reordering,
+                    enter = androidx.compose.animation.scaleIn(MaterialTheme.motionScheme.fastSpatialSpec()) + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                ) {
+                    Surface(shape = CircleShape, color = if (rule.enabled) scheme.primary else scheme.outline, modifier = Modifier.size(20.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                priority.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = NumberFamily),
+                                color = scheme.onPrimary,
+                            )
+                        }
                     }
                 }
             }
@@ -247,12 +279,12 @@ private fun RuleCard(
                 Text(
                     if (sample != null) stringResource(sample.type.verbRes(), sample.name) else "—",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onSurfaceVariant,
+                    color = secondary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
-                Text(summary, style = MaterialTheme.typography.labelMedium, color = scheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                TriggerMarks(rule, labelOf, tint = secondary, modifier = Modifier.padding(top = 4.dp))
             }
-            Switch(checked = rule.enabled, onCheckedChange = onToggle)
+            CheckSwitch(checked = rule.enabled, onCheckedChange = onToggle)
             handle()
         }
     }

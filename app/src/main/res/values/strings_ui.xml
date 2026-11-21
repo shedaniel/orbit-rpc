@@ -79,6 +79,8 @@
     <string name="editor_include_paused">Also while paused</string>
     <string name="editor_include_remote">Include Spotify Connect</string>
     <string name="editor_any_game">Any game</string>
+    <string name="editor_marked_apps">Marked apps</string>
+    <string name="editor_chosen_apps">Chosen apps</string>
     <string name="editor_pick_apps">Choose apps</string>
     <string name="editor_section_show">Show</string>
     <string name="editor_type_auto">Auto</string>
