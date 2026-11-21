@@ -39,7 +39,7 @@ class AppGraph(val context: Context) {
 
     val tokens = TokenStore(context)
     val rest = DiscordRest(http)
-    val gateway = GatewayClient(http, networkMeter, scope) { settingsStore.value.discord }
+    val gateway = GatewayClient(http, networkMeter, scope, { settingsStore.value.discord }, networkMonitor.conditions)
 
     val catalog = AppCatalog(context, scope)
     val assets = DiscordAssetResolver(context, http, catalog, scope) { settingsStore.value.images }
