@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +36,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Api
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Cable
@@ -83,6 +83,8 @@ import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.shedaniel.discordrpc.R
+import me.shedaniel.discordrpc.core.settings.ArtworkLookup
+import me.shedaniel.discordrpc.core.settings.ImageHost
 import me.shedaniel.discordrpc.core.settings.NetworkProfile
 import me.shedaniel.discordrpc.graph
 import me.shedaniel.discordrpc.net.DailyUsage
@@ -113,7 +115,7 @@ fun DataScreen(contentPadding: PaddingValues) {
     val history by graph.networkMeter.history.collectAsStateWithLifecycle()
     val conditions by graph.networkMonitor.conditions.collectAsStateWithLifecycle()
     val settings by graph.settings.collectAsStateWithLifecycle()
-    // Pull the kernel's counters so the cross-check row is current.
+    // Pull the kernel's counters so the tiles' system line is current.
     androidx.compose.runtime.LaunchedEffect(Unit) { graph.networkMeter.sample() }
 
     // Day keys, oldest -> today. Re-evaluated as history ticks so a midnight rollover is picked up.
@@ -140,6 +142,10 @@ fun DataScreen(contentPadding: PaddingValues) {
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.data_title)) },
                 scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
             )
         },
     ) { inner ->
@@ -162,6 +168,10 @@ fun DataScreen(contentPadding: PaddingValues) {
             }
             item(key = "chart") {
                 val labels = remember(days) { days.map { it.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault()) } }
+                // Day-of-month under the first day of each week and under today, so the two weeks read apart.
+                val dates = remember(days) {
+                    days.mapIndexed { i, d -> if (i == 0 || i == DAYS - 7 || i == DAYS - 1) d.dayOfMonth.toString() else null }
+                }
                 val bars = remember(usages) {
                     usages.map { u ->
                         val cell = u.total(Transport.CELLULAR).total
@@ -176,25 +186,36 @@ fun DataScreen(contentPadding: PaddingValues) {
                     StackedBarChart(
                         bars = bars,
                         labels = labels,
+                        subLabels = dates,
+                        weekBreak = DAYS - 7,
                         selected = selected,
                         onSelect = { if (it != selected) { haptics.tick(); selected = it } },
                         lowerColor = MaterialTheme.colorScheme.primary,
                         upperColor = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
                     )
                 }
             }
             item(key = "breakdown") {
                 Breakdown(day, filter, selected) { haptics.tick(); filter = it }
             }
-            item(key = "crosscheck") {
-                CrossCheck(day, filter)
-            }
             item(key = "policy") {
                 Policy(
                     wifi = settings.network.wifi,
                     cellular = settings.network.cellular,
                     initial = if (conditions.transport == Transport.CELLULAR) Transport.CELLULAR else Transport.WIFI,
+                    active = if (conditions.connected) conditions.transport else null,
+                    artworkSource = when (settings.images.lookup) {
+                        ArtworkLookup.ITUNES -> stringResource(R.string.settings_lookup_itunes)
+                        ArtworkLookup.DEEZER -> stringResource(R.string.settings_lookup_deezer)
+                        ArtworkLookup.NONE -> stringResource(R.string.data_p_no_source)
+                    },
+                    uploadTarget = when (settings.images.host) {
+                        ImageHost.LITTERBOX -> stringResource(R.string.settings_host_litterbox)
+                        ImageHost.CATBOX -> stringResource(R.string.settings_host_catbox)
+                        ImageHost.NONE -> stringResource(R.string.data_p_no_source)
+                    },
+                    spotifyNote = if (settings.spotify.enabled) null else stringResource(R.string.data_p_spotify_off),
                     onUpdate = { t, f ->
                         graph.settingsStore.update { s ->
                             s.copy(
@@ -241,20 +262,21 @@ private fun transportShape(t: Transport): RoundedPolygon = if (t == Transport.CE
 @Composable
 private fun DayHero(day: DailyUsage, dayLabel: String, dayKey: Int, live: Transport?, filter: Transport?, onFilter: (Transport) -> Unit) {
     val motion = MaterialTheme.motionScheme
-    Column(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+    Column(Modifier.fillMaxWidth()) {
         AnimatedContent(
             dayLabel,
             transitionSpec = { fadeIn(motion.defaultEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec()) },
             label = "day",
-            modifier = Modifier.padding(start = 28.dp, bottom = 10.dp),
+            modifier = Modifier.padding(start = 28.dp, top = 8.dp, bottom = 8.dp),
         ) {
-            Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(it, style = MaterialTheme.typography.labelLargeEmphasized, color = MaterialTheme.colorScheme.primary)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(Transport.WIFI, Transport.CELLULAR).forEach { t ->
                 UsageTile(
                     transport = t,
                     bytes = day.total(t).total,
+                    system = (day.systemRx[t] ?: 0L) + (day.systemTx[t] ?: 0L),
                     dayKey = dayKey,
                     live = live == t,
                     filtered = filter == t,
@@ -270,6 +292,7 @@ private fun DayHero(day: DailyUsage, dayLabel: String, dayKey: Int, live: Transp
 private fun UsageTile(
     transport: Transport,
     bytes: Long,
+    system: Long,
     dayKey: Int,
     live: Boolean,
     filtered: Boolean,
@@ -281,13 +304,20 @@ private fun UsageTile(
     val mobile = transport == Transport.CELLULAR
     val accent = if (mobile) scheme.primary else scheme.tertiary
     val onAccent = if (mobile) scheme.onPrimary else scheme.onTertiary
-    val accentContainer = if (mobile) scheme.primaryContainer else scheme.tertiaryContainer
-    val onAccentContainer = if (mobile) scheme.onPrimaryContainer else scheme.onTertiaryContainer
-    val container by animateColorAsState(if (live) accentContainer else scheme.surfaceContainer, label = "tile")
-    val textColor by animateColorAsState(if (live) onAccentContainer else scheme.onSurface, label = "tileText")
+    // The network in use lifts to the highest surface tone with an accent rim; both tiles stay neutral surfaces
+    // so neither turns into a bright block in dark mode.
+    val container by animateColorAsState(if (live) scheme.surfaceContainerHighest else scheme.surfaceContainer, label = "tile")
+    val rim by animateColorAsState(if (live) accent else accent.copy(alpha = 0f), label = "rim")
+    val textColor = scheme.onSurface
     val spin by rememberSpin(14_000, enabled = live)
 
-    Surface(onClick = onClick, shape = MaterialTheme.shapes.extraLarge, color = container, modifier = modifier) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = container,
+        border = BorderStroke(2.dp, rim),
+        modifier = modifier,
+    ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ShapeGlyph(transportIcon(transport), transportShape(transport), size = 44.dp, container = accent, content = onAccent, rotation = spin)
@@ -333,8 +363,17 @@ private fun UsageTile(
             Text(
                 stringResource(if (mobile) R.string.data_mobile else R.string.data_wifi),
                 style = MaterialTheme.typography.labelLarge,
-                color = textColor.copy(alpha = 0.8f),
+                color = scheme.onSurfaceVariant,
             )
+            // What Android itself counted for the app on this network, only once there is something to show.
+            AnimatedVisibility(system > 0) {
+                Text(
+                    stringResource(R.string.data_system, formatBytes(system)),
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = NumberFamily),
+                    color = scheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
     }
 }
@@ -496,37 +535,6 @@ private fun ProportionBar(lower: Long, upper: Long, max: Long, lowerColor: Color
     }
 }
 
-// ---- Cross-check -----------------------------------------------------------------------------
-
-@Composable
-private fun CrossCheck(day: DailyUsage, filter: Transport?) {
-    val measured = day.total(filter).total
-    val system = day.systemRx.filterKeys { filter == null || it == filter }.values.sum() +
-        day.systemTx.filterKeys { filter == null || it == filter }.values.sum()
-    val scheme = MaterialTheme.colorScheme
-    SettingsGroup(null, Modifier.padding(top = 10.dp)) {
-        item { shapes ->
-            SegmentedListItem(
-                shapes = shapes,
-                colors = settingsItemColors(),
-                leadingContent = {
-                    ShapeGlyph(Icons.Rounded.Android, MaterialShapes.Pill, size = 40.dp, container = scheme.surfaceContainerHighest, content = scheme.onSurfaceVariant)
-                },
-                supportingContent = {
-                    Text(stringResource(R.string.data_measured, formatBytes(measured)), style = MaterialTheme.typography.bodyMedium.copy(fontFamily = NumberFamily))
-                },
-                trailingContent = {
-                    Text(
-                        if (system > 0) formatBytes(system) else stringResource(R.string.data_unknown),
-                        style = MaterialTheme.typography.titleMediumEmphasized.copy(fontFamily = NumberFamily),
-                        color = scheme.onSurface,
-                    )
-                },
-            ) { Text(stringResource(R.string.data_android_counted)) }
-        }
-    }
-}
-
 // ---- Policy ----------------------------------------------------------------------------------
 
 @Composable
@@ -534,25 +542,24 @@ private fun Policy(
     wifi: NetworkProfile,
     cellular: NetworkProfile,
     initial: Transport,
+    active: Transport?,
+    artworkSource: String,
+    uploadTarget: String,
+    spotifyNote: String?,
     onUpdate: (Transport, (NetworkProfile) -> NetworkProfile) -> Unit,
 ) {
     val motion = MaterialTheme.motionScheme
     var editing by rememberSaveable { mutableStateOf(initial) }
     Column(Modifier.fillMaxWidth()) {
-        Text(
-            stringResource(R.string.data_policy),
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 28.dp, top = 28.dp, bottom = 8.dp),
-        )
+        // The selector is the section's header; a dot marks the network in use.
         ChoiceRow(
             choices = listOf(
-                Choice(Transport.WIFI, stringResource(R.string.data_wifi), Icons.Rounded.Wifi),
-                Choice(Transport.CELLULAR, stringResource(R.string.data_mobile), Icons.Rounded.SignalCellularAlt),
+                Choice(Transport.WIFI, stringResource(R.string.data_wifi), Icons.Rounded.Wifi, marked = active == Transport.WIFI),
+                Choice(Transport.CELLULAR, stringResource(R.string.data_mobile), Icons.Rounded.SignalCellularAlt, marked = active == Transport.CELLULAR),
             ),
             selected = editing,
             onSelect = { editing = it },
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 28.dp),
         )
         Spacer(Modifier.height(10.dp))
         AnimatedContent(
@@ -570,10 +577,10 @@ private fun Policy(
             val set: ((NetworkProfile) -> NetworkProfile) -> Unit = { f -> onUpdate(t, f) }
             SettingsGroup(null) {
                 item { SwitchItem(it, stringResource(R.string.data_p_enabled), p.enabled, { v -> set { it.copy(enabled = v) } }, icon = Icons.Rounded.Sensors) }
-                item { SwitchItem(it, stringResource(R.string.data_p_artwork), p.artworkLookup, { v -> set { it.copy(artworkLookup = v) } }, icon = Icons.Rounded.Album, enabled = p.enabled) }
-                item { SwitchItem(it, stringResource(R.string.data_p_upload), p.uploadImages, { v -> set { it.copy(uploadImages = v) } }, icon = Icons.Rounded.CloudUpload, enabled = p.enabled) }
+                item { SwitchItem(it, stringResource(R.string.data_p_artwork), p.artworkLookup, { v -> set { it.copy(artworkLookup = v) } }, icon = Icons.Rounded.Album, summary = artworkSource, enabled = p.enabled) }
+                item { SwitchItem(it, stringResource(R.string.data_p_upload), p.uploadImages, { v -> set { it.copy(uploadImages = v) } }, icon = Icons.Rounded.CloudUpload, summary = uploadTarget, enabled = p.enabled) }
                 item { SwitchItem(it, stringResource(R.string.data_p_icons), p.appIcons, { v -> set { it.copy(appIcons = v) } }, icon = Icons.Rounded.Apps, enabled = p.enabled) }
-                item { SwitchItem(it, stringResource(R.string.data_p_spotify), p.spotifyConnect, { v -> set { it.copy(spotifyConnect = v) } }, icon = Icons.Rounded.Speaker, enabled = p.enabled) }
+                item { SwitchItem(it, stringResource(R.string.data_p_spotify), p.spotifyConnect, { v -> set { it.copy(spotifyConnect = v) } }, icon = Icons.Rounded.Speaker, summary = spotifyNote, enabled = p.enabled) }
                 item {
                     SwitchItem(
                         it, stringResource(R.string.data_p_stay), p.stayConnected, { v -> set { it.copy(stayConnected = v) } },
