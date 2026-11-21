@@ -134,6 +134,23 @@ fun OrbitHero(
         }
 
         val satFront = sin(Math.toRadians(orbit.toDouble())) > 0
+        // Near half of the ring passes in front of the planet, for depth.
+        Canvas(Modifier.size(side).zIndex(1.5f).graphicsLayer { alpha = ringAlpha }) {
+            val rx = size.width * 0.47f
+            val ry = size.height * 0.2f
+            rotate(-24f) {
+                drawArc(
+                    color = ringColor.copy(alpha = 0.9f),
+                    startAngle = 8f, sweepAngle = 164f, useCenter = false,
+                    topLeft = Offset(center.x - rx, center.y - ry),
+                    size = androidx.compose.ui.geometry.Size(rx * 2, ry * 2),
+                    style = Stroke(
+                        width = 3.dp.toPx(), cap = StrokeCap.Round,
+                        pathEffect = if (live) null else PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 10.dp.toPx()), spin),
+                    ),
+                )
+            }
+        }
         // Planet.
         Box(
             Modifier
