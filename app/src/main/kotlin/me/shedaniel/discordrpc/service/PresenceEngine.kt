@@ -2,6 +2,7 @@ package me.shedaniel.discordrpc.service
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -87,14 +88,23 @@ class PresenceEngine(
         .stateIn(scope, SharingStarted.Eagerly, null)
 
     private var job: Job? = null
+    /** The disconnect launched by the last [stop]; a new [start] must not overtake it. */
+    private var stopping: Job? = null
     private val pausedAt = mutableMapOf<String, Long>()
+    /** Bumped when a paused-grace window expires, so the plan is recomputed without any input change. */
+    private val recheck = MutableStateFlow(0)
+    /** When the presence last became empty (for the idle disconnect); null while something is shown. */
+    private var idleSince: Long? = null
 
     fun start() {
         if (job != null) return
         EventLog.i("Engine", "Starting")
         sources.forEach { it.start() }
         _state.update { it.copy(running = true) }
+        val previousStop = stopping
         job = scope.launch {
+            // Otherwise the old disconnect could land after our first presence and close the fresh socket.
+            previousStop?.join()
             launch { observeGateway() }
             launch { drive() }
         }
@@ -106,7 +116,7 @@ class PresenceEngine(
         EventLog.i("Engine", "Stopping")
         j.cancel()
         sources.forEach { it.stop() }
-        scope.launch { session.disconnect() }
+        stopping = scope.launch { session.disconnect() }
         _state.update { EngineState(running = false, connection = if (tokens.token.value == null) ConnectionState.LoggedOut else ConnectionState.Paused(PauseReason.DISABLED)) }
     }
 
@@ -130,10 +140,21 @@ class PresenceEngine(
         val signals: List<Signal>,
     )
 
-    private suspend fun drive() {
-        val signalsFlow = allSignals()
+    private suspend fun drive() = coroutineScope {
+        val signalsFlow = combine(allSignals(), recheck) { sig, _ -> sig }
+        var graceTimer: Job? = null
         combine(settings, rules, tokens.token, conditions, signalsFlow) { s, r, t, c, sig -> Inputs(s, r, t, c, sig) }
             .map { compute(it) }
+            .onEach { p ->
+                // Nothing else changes when a paused-grace window runs out: re-evaluate on a timer.
+                graceTimer?.cancel()
+                graceTimer = p.recheckAtMs?.let { at ->
+                    launch {
+                        delay((at - System.currentTimeMillis()).coerceAtLeast(0) + 50)
+                        recheck.update { it + 1 }
+                    }
+                }
+            }
             // The UI always sees the freshest view; the network side only reacts to meaningful changes.
             .onEach { p -> _state.update { it.copy(signals = p.signals, activities = p.activities, profile = p.profile, transport = p.transport) } }
             .distinctUntilChanged { a, b -> a.equivalent(b) }
@@ -149,6 +170,8 @@ class PresenceEngine(
         val signals: List<Signal>,
         val activities: List<PresenceActivity>,
         val settings: AppSettings,
+        /** When the plan must be recomputed even if no input changes (paused grace expiry). */
+        val recheckAtMs: Long? = null,
     ) {
         fun equivalent(o: Plan): Boolean =
             token == o.token && pause == o.pause && profile == o.profile && transport == o.transport &&
@@ -164,17 +187,19 @@ class PresenceEngine(
             !s.enabled -> PauseReason.DISABLED
             else -> reason
         }
-        val signals = filterSignals(i.signals, s, now)
+        val (signals, recheckAt) = filterSignals(i.signals, s, now)
         val max = if (s.discord.multipleActivities) 4 else 1
         val activities = RulesEngine.evaluate(i.rules.rules, signals, max).mapNotNull { m ->
             val custom = m.signal?.packageName?.let { s.apps[it]?.customName }
             RulesEngine.render(m.rule, m.signal, custom, now)
         }
-        return Plan(i.token, pause, profile, i.conditions.transport, signals, activities, s)
+        return Plan(i.token, pause, profile, i.conditions.transport, signals, activities, s, recheckAt)
     }
 
-    private fun filterSignals(raw: List<Signal>, s: AppSettings, now: Long): List<Signal> {
+    /** Filtered signals, plus the earliest time a paused-grace window ends (if any is running). */
+    private fun filterSignals(raw: List<Signal>, s: AppSettings, now: Long): Pair<List<Signal>, Long?> {
         val out = mutableListOf<Signal>()
+        var recheckAt: Long? = null
         val live = mutableSetOf<String>()
         for (sig in raw) {
             live += sig.id
@@ -191,7 +216,10 @@ class PresenceEngine(
                     val at = pausedAt.getOrPut(m.id) { now }
                     val grace = s.media.pausedGraceSeconds * 1000L
                     // Within the grace window keep it "playing" without a progress bar.
-                    if (grace > 0 && now - at < grace) m = m.copy(playing = true, positionMs = null, durationMs = null)
+                    if (grace > 0 && now - at < grace) {
+                        m = m.copy(playing = true, positionMs = null, durationMs = null)
+                        recheckAt = minOf(recheckAt ?: Long.MAX_VALUE, at + grace)
+                    }
                 } else pausedAt.remove(m.id)
                 out += m
             } else {
@@ -200,7 +228,7 @@ class PresenceEngine(
             }
         }
         pausedAt.keys.retainAll(live)
-        return out
+        return out to recheckAt
     }
 
     private suspend fun apply(plan: Plan) {
@@ -222,14 +250,20 @@ class PresenceEngine(
         _state.value = base.copy(connection = connectionFrom(session.status.value))
 
         if (plan.activities.isEmpty()) {
-            if (_state.value.sent.isNotEmpty() || session.status.value is GatewayStatus.Ready) {
-                session.setActivities(token, emptyList(), ds.status, ds.afk, appId)
+            // Always tell the gateway: a previous apply may have been cancelled right after handing it activities
+            // (before `sent` was updated), and it may still be connecting with them. It sends nothing when
+            // closed and idle, and never re-sends an identical presence.
+            session.setActivities(token, emptyList(), ds.status, ds.afk, appId)
+            if (_state.value.sent.isNotEmpty()) {
                 _state.update { it.copy(sent = emptyList(), lastSentAtMs = System.currentTimeMillis()) }
             }
             if (!profile.stayConnected) {
-                // collectLatest cancels this wait if something starts playing again.
-                delay(ds.idleDisconnectSeconds * 1000L)
-                EventLog.i("Engine", "Idle for ${ds.idleDisconnectSeconds}s, closing the gateway to save data")
+                // collectLatest cancels this wait if something starts playing again. Measured from when the
+                // presence became empty, so unrelated input churn (settings, network, signals) can't postpone it.
+                val now = System.currentTimeMillis()
+                val since = idleSince ?: now.also { idleSince = it }
+                delay((since + ds.idleDisconnectSeconds * 1000L - now).coerceAtLeast(0))
+                if (session.status.value !is GatewayStatus.Closed) EventLog.i("Engine", "Idle for ${ds.idleDisconnectSeconds}s, closing the gateway to save data")
                 session.disconnect()
             }
             _state.update { it.copy(connection = ConnectionState.Idle) }
@@ -248,6 +282,7 @@ class PresenceEngine(
             )
         }
         session.setActivities(token, resolved, ds.status, ds.afk, appId)
+        idleSince = null
         _state.update { it.copy(sent = resolved, lastSentAtMs = System.currentTimeMillis(), connection = connectionFrom(session.status.value)) }
         // Keep connection state fresh while this plan is active.
         session.status.collect { st -> _state.update { it.copy(connection = connectionFrom(st)) } }
