@@ -64,7 +64,7 @@ fun LoginScreen() {
             val result = graph.rest.me(t)
             val failure = result.exceptionOrNull()
             // Only reject when Discord says the token is bad; network trouble shouldn't block sign-in.
-            if (failure != null && (failure.message?.contains("401") == true)) {
+            if (failure is me.shedaniel.discordrpc.discord.DiscordHttpException && (failure.code == 401 || failure.code == 403)) {
                 haptics.reject()
                 error = invalidText
                 verifying = false

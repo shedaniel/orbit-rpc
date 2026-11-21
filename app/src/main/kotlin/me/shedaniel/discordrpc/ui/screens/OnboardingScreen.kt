@@ -236,7 +236,7 @@ fun OnboardingScreen() {
                 TextButton(onClick = { next() }) { Text(stringResource(R.string.onb_skip)) }
             }
         }
-        if (index == 1 && !currentDone && Build.VERSION.SDK_INT >= 33) {
+        if (index == 1 && !currentDone && Permissions.mayBeRestricted(context)) {
             TextButton(onClick = { context.startActivity(Permissions.appDetailsIntent(context)) }) {
                 Text(stringResource(R.string.onb_restricted), style = MaterialTheme.typography.labelMedium)
             }

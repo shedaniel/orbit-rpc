@@ -14,4 +14,10 @@ class MainActivity : ComponentActivity() {
         if (graph.settings.value.onboarded) PresenceService.sync(this)
         setContent { OrbitApp() }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Permissions may have been granted in system settings meanwhile.
+        graph.mediaSource.refresh()
+    }
 }
