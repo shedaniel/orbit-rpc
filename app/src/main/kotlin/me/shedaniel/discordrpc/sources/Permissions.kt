@@ -2,6 +2,8 @@ package me.shedaniel.discordrpc.sources
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
 import android.provider.Settings
 
 // STUB — implemented by the sources agent.
@@ -10,4 +12,10 @@ object Permissions {
     fun hasUsageAccess(context: Context): Boolean = false
     fun notificationAccessIntent(context: Context): Intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
     fun usageAccessIntent(context: Context): Intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+    fun isIgnoringBatteryOptimizations(context: Context): Boolean =
+        context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
+    fun batteryOptimizationIntent(context: Context): Intent =
+        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+    fun appDetailsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
 }
