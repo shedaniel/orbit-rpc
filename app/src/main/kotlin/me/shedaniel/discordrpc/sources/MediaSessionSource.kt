@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import me.shedaniel.discordrpc.BuildConfig
 import me.shedaniel.discordrpc.core.model.Artwork
 import me.shedaniel.discordrpc.core.model.MediaSignal
 import me.shedaniel.discordrpc.core.model.Signal
@@ -135,9 +136,19 @@ class MediaSessionSource(
         handler.postDelayed(rebuild, DEBOUNCE_MS)
     }
 
+    private val rebuildRef: Runnable get() = rebuild
+
     private val rebuild = Runnable {
         pending = false
         if (!started) return@Runnable
+        // Players often publish a track in stages (title first, artist/art a few hundred ms later).
+        val now = SystemClock.elapsedRealtime()
+        val settling = entries.values.maxOfOrNull { e -> if (e.incomplete()) e.metadataAt + SETTLE_MS - now else 0L } ?: 0L
+        if (settling > 0) {
+            pending = true
+            handler.postDelayed(rebuildRef, settling)
+            return@Runnable
+        }
         val fresh = build(System.currentTimeMillis())
         val prev = _signals.value
         val merged = SignalDiff.merge(prev, fresh)
@@ -215,6 +226,14 @@ class MediaSessionSource(
         var playing = false
         var artwork: Artwork? = null
         var link: String? = null
+        var metadataAt = 0L
+
+        /** Looks like a track change still in progress: something is missing or playback hasn't resumed. */
+        fun incomplete(): Boolean {
+            val m = metadata ?: return false
+            return (m.text(MediaMetadata.METADATA_KEY_ARTIST) == null && m.text(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) == null) ||
+                artwork == null || m.getLong(MediaMetadata.METADATA_KEY_DURATION) <= 0 || !playing
+        }
 
         init {
             playing = effectivePlaying(state)
@@ -227,6 +246,7 @@ class MediaSessionSource(
         override fun onMetadataChanged(m: MediaMetadata?) {
             metadata = m
             lastActive = System.currentTimeMillis()
+            metadataAt = SystemClock.elapsedRealtime()
             onMetadata()
             schedule()
         }
@@ -262,6 +282,8 @@ class MediaSessionSource(
             val m = metadata
             artwork = m?.let { artworkOf(it) }
             link = findLink()
+            // Debug builds: dump raw metadata so new players are easy to support.
+            if (BuildConfig.DEBUG && m != null) EventLog.d("MediaRaw", "$pkg: " + dumpMetadata(m))
         }
 
         private fun findLink(): String? {
@@ -305,6 +327,8 @@ class MediaSessionSource(
 
     companion object {
         const val DEBOUNCE_MS = 300L
+        /** Extra wait for staged metadata, measured from the metadata change. */
+        private const val SETTLE_MS = 1000L
         private const val STAMP_TTL_MS = 60_000L
         private const val MAX_ART_PX = 512
 
@@ -366,6 +390,21 @@ class MediaSessionSource(
             }
             val d = MessageDigest.getInstance("SHA-1").digest(bytes)
             return d.take(8).joinToString("") { "%02x".format(it) }
+        }
+
+        /** Debug aid: every metadata key with a short rendering of its value. */
+        private fun dumpMetadata(m: MediaMetadata): String = m.keySet().sorted().joinToString(", ") { k ->
+            val short = k.removePrefix("android.media.metadata.")
+            val v: Any? = when (k) {
+                MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART, MediaMetadata.METADATA_KEY_DISPLAY_ICON ->
+                    m.getBitmap(k)?.let { "bitmap ${it.width}x${it.height}" }
+                MediaMetadata.METADATA_KEY_DURATION, MediaMetadata.METADATA_KEY_TRACK_NUMBER, MediaMetadata.METADATA_KEY_NUM_TRACKS,
+                MediaMetadata.METADATA_KEY_DISC_NUMBER, MediaMetadata.METADATA_KEY_YEAR, MediaMetadata.METADATA_KEY_BT_FOLDER_TYPE,
+                "android.media.metadata.ADVERTISEMENT", "android.media.metadata.DOWNLOAD_STATUS" -> m.getLong(k)
+                MediaMetadata.METADATA_KEY_RATING, MediaMetadata.METADATA_KEY_USER_RATING -> m.getRating(k)
+                else -> runCatching { m.getText(k) }.getOrNull()
+            }
+            "$short=$v"
         }
 
         fun describe(s: MediaSignal): String = buildString {
