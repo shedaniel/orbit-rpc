@@ -84,7 +84,7 @@ object RulesEngine {
         fun r(s: String) = Template.render(s, v).take(128).ifBlank { null }
         val name = r(t.name) ?: return null
         val media = signal as? MediaSignal
-        val pkg = signal?.packageName
+        val pkg = signal?.packageName?.takeIf { it.isNotBlank() }
 
         fun image(src: ImageSource, url: String): ImageRef? = when (src) {
             ImageSource.NONE -> null

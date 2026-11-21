@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.shedaniel.discordrpc.R
 import me.shedaniel.discordrpc.core.rules.Rule
+import me.shedaniel.discordrpc.core.rules.RulesEngine
 import me.shedaniel.discordrpc.graph
 import me.shedaniel.discordrpc.ui.components.Glyphs
 import me.shedaniel.discordrpc.ui.components.ShapeGlyph
@@ -78,6 +79,7 @@ fun RulesScreen(contentPadding: PaddingValues) {
     val engine by graph.engine.state.collectAsStateWithLifecycle()
     val activeRules = engine.activities.map { it.ruleId }.toSet()
     val apps by graph.catalog.apps.collectAsStateWithLifecycle()
+    val mediaApps by graph.catalog.mediaApps.collectAsStateWithLifecycle()
     val labelOf: (String) -> String = { pkg -> apps.firstOrNull { it.packageName == pkg }?.label ?: graph.catalog.label(pkg) }
 
     // Local copy while dragging so the list feels instant; persisted on drop.
@@ -120,6 +122,8 @@ fun RulesScreen(contentPadding: PaddingValues) {
                         val index = rules.indexOf(rule)
                         RuleCard(
                             rule = rule,
+                            apps = apps,
+                            mediaApps = mediaApps,
                             priority = index + 1,
                             active = rule.id in activeRules,
                             dragging = dragging,
@@ -188,6 +192,8 @@ fun RulesScreen(contentPadding: PaddingValues) {
 @Composable
 private fun RuleCard(
     rule: Rule,
+    apps: List<me.shedaniel.discordrpc.sources.InstalledApp>,
+    mediaApps: Set<String>,
     priority: Int,
     active: Boolean,
     dragging: Boolean,
@@ -234,8 +240,11 @@ private fun RuleCard(
             Column(Modifier.weight(1f)) {
                 Text(rule.name, style = MaterialTheme.typography.titleMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(2.dp))
+                val sample = remember(rule, apps) {
+                    RulesEngine.render(rule, sampleSignal(rule, apps, mediaApps), null, 0L)
+                }
                 Text(
-                    stringResource(rule.template.type.verbRes(), rule.template.name.ifBlank { "…" }),
+                    if (sample != null) stringResource(sample.type.verbRes(), sample.name) else "—",
                     style = MaterialTheme.typography.bodyMedium,
                     color = scheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,

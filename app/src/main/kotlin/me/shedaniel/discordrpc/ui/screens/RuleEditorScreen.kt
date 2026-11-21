@@ -125,32 +125,6 @@ private fun newRule(preset: String?): Rule {
     }
 }
 
-/** A plausible signal for previews when nothing live matches. */
-private fun sampleSignal(rule: Rule, appLabel: (String) -> String): Signal? {
-    val now = System.currentTimeMillis()
-    return when (val t = rule.trigger) {
-        is Trigger.Media -> {
-            val pkg = t.packages.firstOrNull()
-            val kind = t.kinds.firstOrNull { it != MediaKind.UNKNOWN } ?: MediaKind.MUSIC
-            val (title, artist, album) = when (kind) {
-                MediaKind.VIDEO -> Triple("Building a tiny synth from scratch", "Studio Hollow", null)
-                MediaKind.PODCAST, MediaKind.AUDIOBOOK -> Triple("Episode 42: Slow mornings", "The Long Table", "The Long Table")
-                else -> Triple("Golden Hour", "Mara Vey", "Low Tide")
-            }
-            MediaSignal(
-                id = "sample", origin = SignalOrigin.MEDIA_SESSION, packageName = pkg, appLabel = pkg?.let(appLabel) ?: "Music",
-                since = now - 64_000, title = title, artist = artist, album = album, artwork = null,
-                durationMs = 214_000, positionMs = 64_000, positionAtMs = now, playing = true, kind = kind,
-            )
-        }
-        is Trigger.App -> {
-            val pkg = t.packages.firstOrNull() ?: "com.android.settings"
-            AppSignal("sample", pkg, t.packages.firstOrNull()?.let(appLabel) ?: "Game", now - 754_000, isGame = true)
-        }
-        Trigger.Always -> null
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RuleEditorScreen(route: Route.RuleEditor) {
@@ -191,7 +165,7 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
 
     // Preview: a live matching signal if there is one, else a sample.
     val live = engine.signals.firstOrNull { RulesEngine.matches(draft.trigger, it) }
-    val signal = live ?: sampleSignal(draft, labelOf)
+    val signal = live ?: sampleSignal(draft, apps, graph.catalog.mediaApps.value)
     val preview: PresenceActivity? = RulesEngine.render(draft, signal, null, System.currentTimeMillis())
 
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -307,7 +281,7 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
                             draft = draft.copy(trigger = t.copy(games = it))
                         }
                         Spacer(Modifier.height(4.dp))
-                        AppsField(t.packages, labelOf, anyLabel = stringResource(if (t.games) R.string.trigger_games else R.string.trigger_chosen_apps), onPick = { pickApps = true }, onRemove = { p ->
+                        AppsField(t.packages, labelOf, anyLabel = null, onPick = { pickApps = true }, onRemove = { p ->
                             draft = draft.copy(trigger = t.copy(packages = t.packages - p))
                         })
                     }
@@ -498,10 +472,10 @@ private fun ToggleRow(label: String, checked: Boolean, enabled: Boolean = true, 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AppsField(packages: Set<String>, labelOf: (String) -> String, anyLabel: String, onPick: () -> Unit, onRemove: (String) -> Unit) {
+private fun AppsField(packages: Set<String>, labelOf: (String) -> String, anyLabel: String?, onPick: () -> Unit, onRemove: (String) -> Unit) {
     val haptics = rememberHaptics()
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.animateContentSize()) {
-        if (packages.isEmpty()) {
+        if (packages.isEmpty() && anyLabel != null) {
             SuggestionChip(onClick = { haptics.press(); onPick() }, label = { Text(anyLabel) }, icon = { Icon(Icons.Rounded.Apps, null, Modifier.size(18.dp)) })
         }
         packages.forEach { p ->
