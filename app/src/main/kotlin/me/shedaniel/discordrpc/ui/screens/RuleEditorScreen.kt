@@ -106,6 +106,7 @@ import me.shedaniel.discordrpc.ui.components.Glyphs
 import me.shedaniel.discordrpc.ui.components.PresenceCard
 import me.shedaniel.discordrpc.ui.components.ShapeGlyph
 import me.shedaniel.discordrpc.ui.components.glyphIcon
+import me.shedaniel.discordrpc.ui.components.sharedContainer
 import me.shedaniel.discordrpc.ui.components.typeIcon
 import me.shedaniel.discordrpc.ui.components.verbRes
 import me.shedaniel.discordrpc.ui.nav.LocalNavigator
@@ -170,7 +171,8 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
 
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
+        modifier = (if (route.id != null) Modifier.sharedContainer("rule-${route.id}") else Modifier)
+            .nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             MediumFlexibleTopAppBar(

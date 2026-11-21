@@ -62,6 +62,7 @@ import me.shedaniel.discordrpc.graph
 import me.shedaniel.discordrpc.ui.components.Glyphs
 import me.shedaniel.discordrpc.ui.components.ShapeGlyph
 import me.shedaniel.discordrpc.ui.components.glyphIcon
+import me.shedaniel.discordrpc.ui.components.sharedContainer
 import me.shedaniel.discordrpc.ui.components.verbRes
 import me.shedaniel.discordrpc.ui.nav.LocalNavigator
 import me.shedaniel.discordrpc.ui.nav.Route
@@ -216,7 +217,7 @@ private fun RuleCard(
         shape = MaterialTheme.shapes.extraLarge,
         color = container,
         shadowElevation = elevation,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.sharedContainer("rule-${rule.id}").fillMaxWidth(),
     ) {
         Row(Modifier.padding(start = 14.dp, top = 14.dp, bottom = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box {

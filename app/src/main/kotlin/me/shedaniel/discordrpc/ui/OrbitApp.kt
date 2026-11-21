@@ -78,7 +78,12 @@ fun OrbitApp() {
                             entry<Route.Login> { LoginScreen() }
                             entry<Route.Settings> { SettingsScreen() }
                             entry<Route.Log> { LogScreen() }
-                            entry<Route.RuleEditor> { RuleEditorScreen(it) }
+                            // The editor grows out of its rule card (shared bounds), so the page itself only fades.
+                            entry<Route.RuleEditor>(
+                                metadata = NavDisplay.transitionSpec { fadeIn(tween(220, 60)) togetherWith fadeOut(tween(160)) } +
+                                    NavDisplay.popTransitionSpec { fadeIn(tween(220)) togetherWith fadeOut(tween(160, 60)) } +
+                                    NavDisplay.predictivePopTransitionSpec { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                            ) { RuleEditorScreen(it) }
                         },
                     )
                 }
