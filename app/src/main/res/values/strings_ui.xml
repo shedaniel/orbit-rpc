@@ -11,7 +11,7 @@
     <string name="home_off">Off</string>
     <string name="home_also_detected">Also detected</string>
     <string name="home_sources">Sources</string>
-    <string name="home_empty">Play something or open a game</string>
+    <string name="home_battery">Let Orbit run in the background</string>
     <string name="source_media">Media</string>
     <string name="source_games">Games</string>
     <string name="source_spotify">Spotify</string>

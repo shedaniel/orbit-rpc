@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.Login
 import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -123,9 +124,10 @@ fun HomeScreen(contentPadding: PaddingValues, onOpenTab: (Tab) -> Unit) {
             StatusPill(settings.enabled, state.connection, activity != null)
             Spacer(Modifier.weight(1f))
             val today = history.lastOrNull()
-            if (today != null) {
+            val todayBytes = today?.total(state.transport.takeIf { it != Transport.NONE })?.total ?: 0L
+            if (today != null && todayBytes > 0) {
                 DataPill(
-                    bytes = today.total(state.transport.takeIf { it != Transport.NONE }).total,
+                    bytes = todayBytes,
                     transport = state.transport,
                     onClick = { haptics.tick(); onOpenTab(Tab.DATA) },
                 )
@@ -213,9 +215,9 @@ fun HomeScreen(contentPadding: PaddingValues, onOpenTab: (Tab) -> Unit) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
                     stringResource(R.string.home_also_detected),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.labelLargeEmphasized,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 12.dp, bottom = 8.dp),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     others.forEach { SignalRow(it) }
@@ -258,6 +260,26 @@ fun HomeScreen(contentPadding: PaddingValues, onOpenTab: (Tab) -> Unit) {
                 needsPermission = false,
                 modifier = Modifier.weight(1f),
             ) { nav.push(Route.Settings) }
+        }
+
+        // Without a battery exemption Android may stop Orbit; surface it where it matters.
+        val batteryOk = remember(permTick) { Permissions.isIgnoringBatteryOptimizations(context) }
+        AnimatedVisibility(!batteryOk && settings.enabled, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            Surface(
+                onClick = { haptics.press(); context.startActivity(Permissions.batteryOptimizationIntent(context)) },
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ShapeGlyph(
+                        Icons.Rounded.BatteryAlert, MaterialShapes.Pill, size = 40.dp,
+                        container = MaterialTheme.colorScheme.error, content = MaterialTheme.colorScheme.onError,
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(R.string.home_battery), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            }
         }
     }
 }
@@ -313,28 +335,22 @@ private fun DataPill(bytes: Long, transport: Transport, onClick: () -> Unit) {
 @Composable
 private fun EmptyCard(mediaReady: Boolean, appsReady: Boolean) {
     val scheme = MaterialTheme.colorScheme
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .border(2.dp, scheme.outlineVariant, MaterialTheme.shapes.extraLarge)
-            .padding(20.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                listOf("music" to mediaReady, "video" to mediaReady, "game" to appsReady).forEach { (g, ready) ->
-                    ShapeGlyph(
-                        glyphIcon(g), Glyphs.polygon(g), size = 44.dp,
-                        container = if (ready) scheme.secondaryContainer else scheme.surfaceContainerHighest,
-                        content = if (ready) scheme.onSecondaryContainer else scheme.outline,
-                    )
-                }
+    val spin by me.shedaniel.discordrpc.ui.components.rememberSpin(40_000)
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = scheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(vertical = 22.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // What can be shared, lit when its source is ready; slowly turning while waiting.
+            listOf("music" to mediaReady, "video" to mediaReady, "game" to appsReady).forEachIndexed { i, (g, ready) ->
+                ShapeGlyph(
+                    glyphIcon(g), Glyphs.polygon(g), size = 52.dp,
+                    container = if (ready) scheme.secondaryContainer else scheme.surfaceContainerHighest,
+                    content = if (ready) scheme.onSecondaryContainer else scheme.outline,
+                    rotation = if (i % 2 == 0) spin else -spin,
+                )
             }
-            Spacer(Modifier.width(16.dp))
-            Text(
-                stringResource(R.string.home_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant,
-            )
         }
     }
 }

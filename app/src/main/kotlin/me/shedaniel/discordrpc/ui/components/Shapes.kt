@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
@@ -104,11 +105,12 @@ fun ShapeGlyph(
     content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     rotation: Float = 0f,
 ) {
+    // Rotate the shape on the GPU and counter-rotate the icon so it stays upright.
     Box(
-        modifier.size(size).clip(remember(polygon, rotation) { PolygonShape(polygon, rotation) }).background(container),
+        modifier.size(size).graphicsLayer { rotationZ = rotation }.clip(remember(polygon) { PolygonShape(polygon) }).background(container),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(size * 0.46f))
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(size * 0.46f).graphicsLayer { rotationZ = -rotation })
     }
 }
 

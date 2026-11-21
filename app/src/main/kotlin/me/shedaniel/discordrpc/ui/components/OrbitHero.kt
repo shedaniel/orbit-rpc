@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.rounded.Login
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.SignalCellularOff
 import androidx.compose.material.icons.rounded.SyncProblem
@@ -158,7 +158,7 @@ fun OrbitHero(
                 .size(planet)
                 .graphicsLayer { scaleX = planetScale; scaleY = planetScale }
                 .clip(planetShape)
-                .background(if (mode == HeroMode.ERROR) scheme.errorContainer else scheme.primaryContainer),
+                .background(when (mode) { HeroMode.ERROR -> scheme.errorContainer; HeroMode.SIGNED_OUT -> scheme.surfaceContainerHigh; else -> scheme.primaryContainer }),
             contentAlignment = Alignment.Center,
         ) {
             val filter = if (saturation < 1f) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) }) else null
@@ -179,7 +179,7 @@ fun OrbitHero(
                     null, tint = scheme.onPrimaryContainer,
                     modifier = Modifier.size(planet * 0.28f).background(scheme.primaryContainer.copy(alpha = 0.85f), CircleShape).padding(planet * 0.05f),
                 )
-                HeroMode.SIGNED_OUT -> Icon(Icons.Rounded.Login, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(planet * 0.32f))
+                HeroMode.SIGNED_OUT -> Icon(Icons.Rounded.Person, null, tint = scheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(planet * 0.4f))
                 HeroMode.ERROR -> Icon(Icons.Rounded.SyncProblem, null, tint = scheme.onErrorContainer, modifier = Modifier.size(planet * 0.3f))
                 HeroMode.CONNECTING -> if (activity?.largeImage == null) LoadingIndicator(Modifier.size(planet * 0.4f), color = scheme.onPrimaryContainer)
                 else -> Unit

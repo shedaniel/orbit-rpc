@@ -2,6 +2,8 @@ package me.shedaniel.discordrpc.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.LiveTv
@@ -27,5 +29,7 @@ fun glyphIcon(key: String): ImageVector = when (key) {
     "game" -> Icons.Rounded.SportsEsports
     "podcast" -> Icons.Rounded.Podcasts
     "app" -> Icons.Rounded.Apps
+    "spotify" -> Icons.Rounded.Speaker
+    "always" -> Icons.Rounded.AutoAwesome
     else -> Icons.Rounded.Star
 }

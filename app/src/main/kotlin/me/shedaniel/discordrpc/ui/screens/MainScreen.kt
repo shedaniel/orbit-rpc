@@ -4,7 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -69,12 +70,17 @@ fun MainScreen() {
             }
         },
     ) { padding ->
-        val spatial = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+        val slide = MaterialTheme.motionScheme.defaultSpatialSpec<androidx.compose.ui.unit.IntOffset>()
         val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
         val fastOut = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
         AnimatedContent(
             targetState = tab,
-            transitionSpec = { (fadeIn(effects) + scaleIn(spatial, initialScale = 0.96f)) togetherWith fadeOut(fastOut) },
+            // Slide in the direction of the destination tab.
+            transitionSpec = {
+                val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                (slideInHorizontally(slide) { dir * it / 5 } + fadeIn(effects)) togetherWith
+                    (slideOutHorizontally(slide) { -dir * it / 5 } + fadeOut(fastOut))
+            },
             label = "tab",
             modifier = Modifier.fillMaxSize(),
         ) { t ->
