@@ -525,16 +525,7 @@ fun SettingsScreen() {
                         )
                     }
                     item {
-                        InfoItem(
-                            it, stringResource(R.string.settings_version), icon = Icons.Rounded.Info,
-                            trailing = {
-                                Text(
-                                    BuildConfig.VERSION_NAME,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = NumberFamily),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                        )
+                        InfoItem(it, stringResource(R.string.settings_version), icon = Icons.Rounded.Info, summary = BuildConfig.VERSION_NAME)
                     }
                 }
             }
@@ -639,7 +630,7 @@ private fun PermissionItem(
         shapes, title, onGrant, icon = icon, summary = summary,
         trailing = {
             AnimatedContent(granted, transitionSpec = { (fadeIn() + scaleIn(initialScale = 0.6f)) togetherWith fadeOut() }, label = "perm") { g ->
-                if (g) GrantedMark(true) else GrantButton(onGrant)
+                if (g) GrantedMark(true) else GrantButton()
             }
         },
     )

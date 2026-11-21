@@ -454,7 +454,11 @@ fun RuleEditorScreen(route: Route.RuleEditor) {
             exit = slideOutVertically { -it } + fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
-            preview?.let { CompactPreview(it, Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+            // Fade the content out behind the pill so nothing peeks above it.
+            val surface = MaterialTheme.colorScheme.surface
+            Box(Modifier.background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to surface, 0.6f to surface, 1f to surface.copy(alpha = 0f)))) {
+                preview?.let { CompactPreview(it, Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)) }
+            }
         }
         }
     }

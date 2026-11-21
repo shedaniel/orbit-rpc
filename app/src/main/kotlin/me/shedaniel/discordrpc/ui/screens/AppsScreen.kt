@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -329,12 +330,12 @@ private fun AppSheet(app: InstalledApp, settings: AppSettings, onDismiss: () -> 
                             Text(
                                 app.packageName, style = MaterialTheme.typography.labelMedium.copy(fontFamily = NumberFamily),
                                 color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.height(24.dp).wrapContentHeight(Alignment.CenterVertically),
+                                modifier = Modifier.heightIn(min = 24.dp).wrapContentHeight(Alignment.CenterVertically),
                             )
                         } else {
                             Surface(shape = CircleShape, color = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer) {
                                 Row(
-                                    Modifier.height(24.dp).padding(start = 8.dp, end = 10.dp),
+                                    Modifier.heightIn(min = 24.dp).padding(start = 8.dp, end = 10.dp, top = 2.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Icon(app.category.icon(), null, Modifier.size(14.dp))

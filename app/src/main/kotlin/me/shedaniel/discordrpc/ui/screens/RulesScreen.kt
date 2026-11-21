@@ -280,10 +280,11 @@ private fun RuleCard(
                     if (sample != null) stringResource(sample.type.verbRes(), sample.name) else "—",
                     style = MaterialTheme.typography.bodyMedium,
                     color = secondary,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
                 TriggerMarks(rule, labelOf, tint = secondary, modifier = Modifier.padding(top = 4.dp))
             }
+            Spacer(Modifier.width(8.dp))
             CheckSwitch(checked = rule.enabled, onCheckedChange = onToggle)
             handle()
         }

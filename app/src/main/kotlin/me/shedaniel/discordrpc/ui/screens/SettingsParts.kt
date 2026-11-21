@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -198,12 +201,17 @@ internal fun GrantedMark(granted: Boolean) {
     )
 }
 
+/** Trailing mark for a permission that isn't granted yet: the same shape as [GrantedMark], tonal, pointing onward. */
 @Composable
-internal fun GrantButton(onClick: () -> Unit) {
-    androidx.compose.material3.FilledTonalButton(
-        onClick = onClick,
-        contentPadding = ButtonDefaults.ExtraSmallContentPadding,
-        modifier = Modifier.height(ButtonDefaults.ExtraSmallContainerHeight),
-        shapes = ButtonDefaults.shapes(),
-    ) { Text(androidx.compose.ui.res.stringResource(R.string.settings_grant), style = MaterialTheme.typography.labelLarge) }
+internal fun GrantButton() {
+    val scheme = MaterialTheme.colorScheme
+    val label = androidx.compose.ui.res.stringResource(R.string.settings_grant)
+    me.shedaniel.discordrpc.ui.components.ShapeGlyph(
+        Icons.AutoMirrored.Rounded.ArrowForward,
+        androidx.compose.material3.MaterialShapes.Cookie9Sided,
+        size = 32.dp,
+        container = scheme.secondaryContainer,
+        content = scheme.onSecondaryContainer,
+        modifier = Modifier.semantics { contentDescription = label },
+    )
 }

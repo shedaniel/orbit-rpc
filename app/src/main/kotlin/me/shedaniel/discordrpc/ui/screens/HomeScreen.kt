@@ -232,34 +232,49 @@ fun HomeScreen(contentPadding: PaddingValues, onOpenTab: (Tab) -> Unit) {
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 28.dp, bottom = 8.dp),
         )
-        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SourceTile(
-                glyph = "music",
-                label = stringResource(R.string.source_media),
-                on = settings.media.enabled && notifAccess,
-                needsPermission = !notifAccess,
-                modifier = Modifier.weight(1f),
-            ) {
-                if (!notifAccess) context.startActivity(Permissions.notificationAccessIntent(context))
-                else graph.settingsStore.update { it.copy(media = it.media.copy(enabled = !it.media.enabled)) }
+        // Three tiles side by side; with large text they become full-width rows rather than truncating labels.
+        val sourceLabels = listOf(stringResource(R.string.source_media), stringResource(R.string.source_games), stringResource(R.string.source_spotify))
+        val tileStyle = MaterialTheme.typography.titleSmall
+        val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.padding(horizontal = 16.dp)) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val labelRoom = (maxWidth - 20.dp) / 3 - 28.dp
+            val inline = sourceLabels.any { l -> with(density) { measurer.measure(l, tileStyle, maxLines = 1, softWrap = false).size.width.toDp() } > labelRoom }
+            val tiles: @Composable (Modifier) -> Unit = { tileModifier ->
+                SourceTile(
+                        inline = inline,
+                    glyph = "music",
+                    label = stringResource(R.string.source_media),
+                    on = settings.media.enabled && notifAccess,
+                    needsPermission = !notifAccess,
+                    modifier = tileModifier,
+                ) {
+                    if (!notifAccess) context.startActivity(Permissions.notificationAccessIntent(context))
+                    else graph.settingsStore.update { it.copy(media = it.media.copy(enabled = !it.media.enabled)) }
+                }
+                SourceTile(
+                        inline = inline,
+                    glyph = "game",
+                    label = stringResource(R.string.source_games),
+                    on = settings.foreground.enabled && usageAccess,
+                    needsPermission = !usageAccess,
+                    modifier = tileModifier,
+                ) {
+                    if (!usageAccess) context.startActivity(Permissions.usageAccessIntent(context))
+                    else graph.settingsStore.update { it.copy(foreground = it.foreground.copy(enabled = !it.foreground.enabled)) }
+                }
+                SourceTile(
+                        inline = inline,
+                    glyph = "spotify",
+                    label = stringResource(R.string.source_spotify),
+                    on = settings.spotify.enabled && settings.spotify.clientId.isNotBlank(),
+                    needsPermission = false,
+                    modifier = tileModifier,
+                ) { nav.push(Route.Settings) }
+            
             }
-            SourceTile(
-                glyph = "game",
-                label = stringResource(R.string.source_games),
-                on = settings.foreground.enabled && usageAccess,
-                needsPermission = !usageAccess,
-                modifier = Modifier.weight(1f),
-            ) {
-                if (!usageAccess) context.startActivity(Permissions.usageAccessIntent(context))
-                else graph.settingsStore.update { it.copy(foreground = it.foreground.copy(enabled = !it.foreground.enabled)) }
-            }
-            SourceTile(
-                glyph = "spotify",
-                label = stringResource(R.string.source_spotify),
-                on = settings.spotify.enabled && settings.spotify.clientId.isNotBlank(),
-                needsPermission = false,
-                modifier = Modifier.weight(1f),
-            ) { nav.push(Route.Settings) }
+            if (inline) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { tiles(Modifier.fillMaxWidth()) }
+            else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { tiles(Modifier.weight(1f)) }
         }
 
         // Without a battery exemption Android may stop Orbit; surface it where it matters.
@@ -375,14 +390,14 @@ private fun SignalRow(s: Signal) {
                     ).joinToString(" · ")
                     is AppSignal -> stringResource(if (s.isGame) R.string.signal_game else R.string.signal_open)
                 }
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
 }
 
 @Composable
-private fun SourceTile(glyph: String, label: String, on: Boolean, needsPermission: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun SourceTile(glyph: String, label: String, on: Boolean, needsPermission: Boolean, modifier: Modifier, inline: Boolean = false, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val haptics = rememberHaptics()
     val container by animateColorAsState(if (on) scheme.primaryContainer else scheme.surfaceContainer, label = "tile")
@@ -392,7 +407,7 @@ private fun SourceTile(glyph: String, label: String, on: Boolean, needsPermissio
         color = container,
         modifier = modifier,
     ) {
-        Column(Modifier.padding(14.dp)) {
+        val content: @Composable () -> Unit = {
             Box {
                 ShapeGlyph(
                     glyphIcon(glyph), Glyphs.polygon(glyph), size = 40.dp,
@@ -403,9 +418,11 @@ private fun SourceTile(glyph: String, label: String, on: Boolean, needsPermissio
                     Box(Modifier.align(Alignment.TopEnd).size(12.dp).border(2.dp, container, CircleShape).background(scheme.error, CircleShape))
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.size(if (inline) 14.dp else 12.dp))
+            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = if (inline) 2 else 1, overflow = TextOverflow.Ellipsis)
         }
+        if (inline) Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { content() }
+        else Column(Modifier.padding(14.dp)) { content() }
     }
 }
 

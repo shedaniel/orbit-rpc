@@ -240,7 +240,7 @@ fun OnboardingScreen() {
                 }
             }
         }
-        Box(Modifier.height(56.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.heightIn(min = 56.dp), contentAlignment = Alignment.Center) {
             if (step.optional && !currentDone) {
                 TextButton(onClick = { next() }) { Text(stringResource(R.string.onb_skip)) }
             }
