@@ -67,14 +67,13 @@ import me.shedaniel.discordrpc.ui.theme.rememberHaptics
 @Composable
 internal fun settingsItemColors() = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
 
-// ---- Battery helpers (until Permissions gains them) ------------------------------------------
+// ---- Battery helpers -------------------------------------------------------------------------
 
 internal fun isIgnoringBatteryOptimizations(context: Context): Boolean =
-    context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) == true
+    me.shedaniel.discordrpc.sources.Permissions.isIgnoringBatteryOptimizations(context)
 
-@android.annotation.SuppressLint("BatteryLife")
 internal fun batteryOptimizationIntent(context: Context): Intent =
-    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}"))
+    me.shedaniel.discordrpc.sources.Permissions.batteryOptimizationIntent(context)
 
 // ---- Dialogs ---------------------------------------------------------------------------------
 

@@ -164,7 +164,8 @@ fun SliderItem(
 ) {
     val haptics = rememberHaptics()
     var live by remember(value) { mutableFloatStateOf(value.toFloat()) }
-    val steps = ((range.last - range.first) / step - 1).coerceAtLeast(0)
+    // Long ranges get no tick marks (snapping still happens in onValueChange).
+    val steps = ((range.last - range.first) / step - 1).coerceAtLeast(0).let { if (it > 20) 0 else it }
     SegmentedListItem(
         shapes = shapes,
         enabled = enabled,

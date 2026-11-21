@@ -113,6 +113,8 @@ fun DataScreen(contentPadding: PaddingValues) {
     val history by graph.networkMeter.history.collectAsStateWithLifecycle()
     val conditions by graph.networkMonitor.conditions.collectAsStateWithLifecycle()
     val settings by graph.settings.collectAsStateWithLifecycle()
+    // Pull the kernel's counters so the cross-check row is current.
+    androidx.compose.runtime.LaunchedEffect(Unit) { graph.networkMeter.sample() }
 
     // Day keys, oldest -> today. Re-evaluated as history ticks so a midnight rollover is picked up.
     val todayKey = history.lastOrNull()?.day ?: LocalDate.now().toString()

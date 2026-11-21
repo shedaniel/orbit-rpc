@@ -146,4 +146,6 @@
     <string name="log_level_info">Info</string>
     <string name="log_level_warn">Warning</string>
     <string name="log_level_error">Error</string>
+    <string name="settings_clear_images">Clear image cache</string>
+    <string name="settings_clear_images_done">Cleared</string>
 </resources>

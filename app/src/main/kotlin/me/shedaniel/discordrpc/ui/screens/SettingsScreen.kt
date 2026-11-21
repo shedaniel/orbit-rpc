@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Compress
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -390,6 +391,15 @@ fun SettingsScreen() {
                                 ImageHost.CATBOX -> stringResource(R.string.settings_host_catbox_summary)
                                 ImageHost.NONE -> null
                             },
+                        )
+                    }
+                    item {
+                        var cleared by remember { mutableStateOf(false) }
+                        ClickItem(
+                            it, stringResource(R.string.settings_clear_images),
+                            onClick = { graph.assets.clearCache(); cleared = true },
+                            icon = Icons.Rounded.DeleteSweep,
+                            summary = if (cleared) stringResource(R.string.settings_clear_images_done) else null,
                         )
                     }
                 }
