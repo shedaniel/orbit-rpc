@@ -62,12 +62,13 @@ class DiscordAssetResolver(
     private val inflight = HashMap<String, Deferred<String?>>()
     private var saveJob: Job? = null
 
-    init {
-        scope.launch(Dispatchers.IO) { cache.load(file) }
-    }
+    /** Resolving before the persisted cache is loaded would repeat lookups/uploads that are already cached. */
+    private val loaded = scope.async(Dispatchers.IO) { runCatching { cache.load(file) } }
 
-    override suspend fun resolve(ref: ImageRef, profile: NetworkProfile, token: String, applicationId: String): String? =
-        resolve(ref, profile, token, applicationId, depth = 0)
+    override suspend fun resolve(ref: ImageRef, profile: NetworkProfile, token: String, applicationId: String): String? {
+        loaded.await()
+        return resolve(ref, profile, token, applicationId, depth = 0)
+    }
 
     private suspend fun resolve(ref: ImageRef, profile: NetworkProfile, token: String, appId: String, depth: Int): String? {
         if (depth > 3) return null

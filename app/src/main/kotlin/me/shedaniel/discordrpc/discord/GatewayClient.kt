@@ -180,7 +180,8 @@ class GatewayClient(
             }
             is Ev.Opened -> if (ev.gen == gen) {
                 opened = true
-                connectTimeoutJob?.cancel()
+                // The connect timeout keeps running until HELLO: an upgraded socket that never says hello would
+                // otherwise sit in "connecting" forever.
                 if (ev.extensions != null) EventLog.d(TAG, "Server negotiated websocket extensions: ${ev.extensions}")
             }
             is Ev.Msg -> if (ev.gen == gen) onMessage(ev.m)
@@ -196,8 +197,8 @@ class GatewayClient(
                 }
             }
             is Ev.IdentifyNow -> if (ev.gen == gen && ws != null) sendIdentify()
-            is Ev.ConnectTimeout -> if (ev.gen == gen && !opened) {
-                EventLog.w(TAG, "Gateway handshake timed out")
+            is Ev.ConnectTimeout -> if (ev.gen == gen && heartbeatJob == null) {
+                EventLog.w(TAG, if (opened) "No HELLO from the gateway" else "Gateway handshake timed out")
                 dropSocket(cancel = true)
                 scheduleReconnect(null, "Handshake timed out")
             }
@@ -400,6 +401,7 @@ class GatewayClient(
     private fun onMessage(m: Incoming) {
         when (m) {
             is Incoming.Hello -> {
+                connectTimeoutJob?.cancel(); connectTimeoutJob = null
                 startHeartbeat(m.intervalMs)
                 if (canResume()) sendResume() else sendIdentify()
             }
