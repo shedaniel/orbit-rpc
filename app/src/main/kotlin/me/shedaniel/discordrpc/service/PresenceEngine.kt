@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -133,6 +134,8 @@ class PresenceEngine(
         val signalsFlow = allSignals()
         combine(settings, rules, tokens.token, conditions, signalsFlow) { s, r, t, c, sig -> Inputs(s, r, t, c, sig) }
             .map { compute(it) }
+            // The UI always sees the freshest view; the network side only reacts to meaningful changes.
+            .onEach { p -> _state.update { it.copy(signals = p.signals, activities = p.activities, profile = p.profile, transport = p.transport) } }
             .distinctUntilChanged { a, b -> a.equivalent(b) }
             .collectLatest { plan -> apply(plan) }
     }
@@ -202,7 +205,7 @@ class PresenceEngine(
 
     private suspend fun apply(plan: Plan) {
         val token = plan.token
-        val base = _state.value.copy(signals = plan.signals, activities = plan.activities, profile = plan.profile, transport = plan.transport)
+        val base = _state.value
         if (token == null) {
             _state.value = base.copy(connection = ConnectionState.LoggedOut, sent = emptyList())
             session.disconnect()
